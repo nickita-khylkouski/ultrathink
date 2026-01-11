@@ -376,7 +376,7 @@ class ShapetheciasEvolution:
                 variant["admet_score"] = props.get("admet_score", 0.5)
                 variant["properties"] = props
                 scored.append(variant)
-            except:
+            except Exception as e:
                 variant["admet_score"] = 0.3  # Bad score if error
                 scored.append(variant)
 
@@ -501,7 +501,7 @@ def calculate_synthetic_accessibility(smiles: str) -> float:
         sa_score += (num_rings / 3) * 0.5
 
         return round(min(10, max(1, sa_score)), 2)
-    except:
+    except Exception as e:
         return 5.0
 
 def calculate_fingerprint_similarity(smiles1: str, smiles2: str) -> float:
@@ -526,7 +526,7 @@ def calculate_fingerprint_similarity(smiles1: str, smiles2: str) -> float:
 
         similarity = DataStructs.TanimotoSimilarity(fp1, fp2)
         return round(similarity, 3)
-    except:
+    except Exception as e:
         return 0.0
 
 def generate_3d_coordinates(smiles: str) -> Optional[str]:
@@ -553,11 +553,11 @@ def generate_3d_coordinates(smiles: str) -> Optional[str]:
         # Optimize geometry with MMFF force field
         try:
             AllChem.MMFFOptimizeMolecule(mol)
-        except:
+        except Exception as e:
             # If MMFF fails, try UFF
             try:
                 AllChem.UFFOptimizeMolecule(mol)
-            except:
+            except Exception as e:
                 pass
 
         # Convert to SDF format
@@ -955,7 +955,7 @@ async def check_smartchem(request: Request):
         async with httpx.AsyncClient() as client:
             resp = await client.get(f"{SMARTCHEM_BASE}/", timeout=5.0)
             return {"status": "online", "port": 8000}
-    except:
+    except Exception as e:
         return {"status": "offline", "port": 8000}
 
 @app.get("/status/bionemo")
@@ -966,7 +966,7 @@ async def check_bionemo(request: Request):
         async with httpx.AsyncClient() as client:
             resp = await client.get(f"{BIONEMO_BASE}/", timeout=5.0)
             return {"status": "online", "port": 5000}
-    except:
+    except Exception as e:
         return {"status": "offline", "port": 5000}
 
 @app.post("/orchestrate/demo")
@@ -1078,7 +1078,7 @@ def demo_discovery(request: Request, req: GenerationRequest):
                     "rotatable_bonds": rotatable_bonds
                 }
             })
-        except:
+        except Exception as e:
             continue
 
     # Sort by ADMET score
@@ -1212,6 +1212,10 @@ def analyze_similarity(request: Request, smiles1: str, smiles2: str):
     Calculate similarity between two molecules using Morgan fingerprints.
     GitHub: rdkit/rdkit
     """
+    # Validate both SMILES inputs
+    validate_smiles(smiles1)
+    validate_smiles(smiles2)
+
     try:
         similarity = calculate_fingerprint_similarity(smiles1, smiles2)
         return {
@@ -1336,6 +1340,8 @@ def get_3d_structure(request: Request, smiles: str):
     - rdkit/rdkit (3D coordinate generation with ETKDG)
     - 3dmol/3Dmol.js (WebGL visualization)
     """
+    validate_smiles(smiles)
+
     try:
         sdf_data = generate_3d_coordinates(smiles)
 
@@ -1388,6 +1394,8 @@ def analyze_drug_for_disease(request: Request, smiles: str, disease: str, drug_n
     Use ChatGPT to explain why a molecule works for a specific disease.
     Returns scientific reasoning about mechanism of action.
     """
+    validate_smiles(smiles)
+
     if not openai_client:
         return {"error": "OpenAI API not configured", "fallback": "System needs OPENAI_API_KEY"}
 
@@ -1432,6 +1440,8 @@ def assess_drug_risks(request: Request, smiles: str, drug_name: str = "", descri
     """
     Use ChatGPT to assess potential risks and side effects of a drug.
     """
+    validate_smiles(smiles)
+
     if not openai_client:
         return {"error": "OpenAI API not configured"}
 
@@ -1479,6 +1489,8 @@ def explain_synthesis_complexity(request: Request, smiles: str, drug_name: str =
     """
     Use ChatGPT to explain how difficult/easy this drug is to synthesize.
     """
+    validate_smiles(smiles)
+
     if not openai_client:
         return {"error": "OpenAI API not configured"}
 
@@ -1653,6 +1665,7 @@ def shapethesias_continue(request: Request, selected_smiles: str, generation: in
     Researcher picks one of the top 5 from generation N.
     That becomes the parent for generation N+1.
     """
+    validate_smiles(selected_smiles)
     return shapethesias_evolve(selected_smiles, num_variants=num_variants, generation=generation)
 
 
@@ -1793,6 +1806,8 @@ def theseus_transform_molecule(request: Request, input_smiles: str, num_variants
     This demonstrates the philosophical question:
     "If you change all parts of a drug, is it still the same drug?"
     """
+    validate_smiles(input_smiles)
+
     variants = TheseusMutation.optimize_mutations(input_smiles, num_variants)
 
     # Score each variant
@@ -1806,7 +1821,7 @@ def theseus_transform_molecule(request: Request, input_smiles: str, num_variants
             variant["admet_score"] = props.get("admet_score", 0.5)
             variant["novelty_score"] = len(variant["mutations"]) / 10.0  # Higher mutations = more novel
             scored_variants.append(variant)
-        except:
+        except Exception as e:
             variant["admet_score"] = 0.5
             scored_variants.append(variant)
 
@@ -1833,6 +1848,9 @@ def analyze_novelty_with_gpt4(request: Request, original_smiles: str, mutated_sm
     3. Could it work for the disease?
     4. Ship of Theseus philosophical implications
     """
+    validate_smiles(original_smiles)
+    validate_smiles(mutated_smiles)
+
     if not openai_client:
         return {"error": "OpenAI API not configured"}
 
@@ -2144,6 +2162,8 @@ def calculate_all_molecular_properties(request: Request, smiles: str):
     Calculate ALL hard molecular values for a given molecule.
     Uses RDKit for rigorous calculations.
     """
+    validate_smiles(smiles)
+
     if not Chem:
         return {"error": "RDKit not available"}
 
@@ -2203,6 +2223,8 @@ def predict_efficacy_with_gpt(request: Request, smiles: str, disease: str, mecha
     2. GPT-4o reasoning with extended context
     3. Database comparisons (PubChem, ChemBL)
     """
+    validate_smiles(smiles)
+
     if not openai_client:
         return {"error": "OpenAI API not configured"}
 
