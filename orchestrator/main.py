@@ -141,6 +141,27 @@ ADMET_MODEL = None  # Will load ADMET predictor from EBNA1
 logger.info(f"SmartChem service: {SMARTCHEM_BASE}")
 logger.info(f"BioNeMo service: {BIONEMO_BASE}")
 
+# ===== CONSTANTS =====
+# Molecular weight bounds (Daltons)
+MIN_MOLECULAR_WEIGHT = 10   # Minimum valid molecular weight
+MAX_MOLECULAR_WEIGHT = 2000  # Maximum for drug-like molecules
+DRUG_LIKE_MW_MIN = 150  # Typical drug-like range
+DRUG_LIKE_MW_MAX = 900
+
+# Evolution parameters
+DEFAULT_NUM_VARIANTS = 100  # Number of variants per generation
+TOP_CANDIDATES_COUNT = 5    # Top candidates to return
+
+# Rate limiting (requests per minute)
+RATE_LIMIT_EXPENSIVE = "5/minute"   # AI calls, pipelines
+RATE_LIMIT_MODERATE = "10/minute"   # Calculations
+RATE_LIMIT_LIGHT = "20/minute"      # Read-only
+RATE_LIMIT_HEALTH = "30/minute"     # Health checks
+
+# HTTP timeouts (seconds)
+HTTP_TIMEOUT_DEFAULT = 30.0
+HTTP_TIMEOUT_LONG = 60.0
+
 # ===== INPUT VALIDATION =====
 def validate_smiles(smiles: str) -> dict:
     """
@@ -182,10 +203,10 @@ def validate_smiles(smiles: str) -> dict:
             })
 
         mw = Descriptors.MolWt(mol)
-        if mw < 10 or mw > 2000:
+        if mw < MIN_MOLECULAR_WEIGHT or mw > MAX_MOLECULAR_WEIGHT:
             raise HTTPException(400, detail={
-                "error": f"Molecular weight {mw:.1f} Da is outside valid range (10-2000)",
-                "suggestion": "Drug-like molecules are typically 150-900 Da"
+                "error": f"Molecular weight {mw:.1f} Da is outside valid range ({MIN_MOLECULAR_WEIGHT}-{MAX_MOLECULAR_WEIGHT})",
+                "suggestion": f"Drug-like molecules are typically {DRUG_LIKE_MW_MIN}-{DRUG_LIKE_MW_MAX} Da"
             })
 
         return {"valid": True, "smiles": smiles, "canonical": Chem.MolToSmiles(mol)}
@@ -422,6 +443,31 @@ class PipelineResult(BaseModel):
     admet_stage: dict
     top_candidates: List[dict]
     tools_used: List[str]
+
+class MolecularAnalysisResult(BaseModel):
+    """Response model for comprehensive molecular analysis"""
+    smiles: str
+    properties: dict
+    synthesis_difficulty: float
+    tools_used: List[str]
+    summary: dict
+
+class DrugAnalysisResult(BaseModel):
+    """Response model for AI drug analysis"""
+    analysis: str
+    smiles: str
+    disease: str
+    drug_name: Optional[str] = None
+    model_used: str
+
+class EvolutionResult(BaseModel):
+    """Response model for Shapethesias evolution"""
+    generation: int
+    parent_smiles: str
+    total_variants_generated: int
+    top_5_candidates: List[dict]
+    concept: str
+    philosophy: str
 
 
 # ===== DATABASE LIFECYCLE HOOKS =====
@@ -1228,7 +1274,7 @@ def analyze_similarity(request: Request, smiles1: str, smiles2: str):
     except Exception as e:
         return {"error": str(e)}
 
-@app.post("/tools/analysis")
+@app.post("/tools/analysis", response_model=MolecularAnalysisResult)
 @limiter.limit("10/minute")  # Moderate: ADMET + SA calculations
 def comprehensive_analysis(request: Request, smiles: str):
     """
@@ -1387,7 +1433,7 @@ def list_available_targets(request: Request):
 
 # ===== AI ANALYSIS ENDPOINTS (ChatGPT Integration) =====
 
-@app.post("/ai/drug-analysis")
+@app.post("/ai/drug-analysis", response_model=DrugAnalysisResult)
 @limiter.limit("5/minute")  # OpenAI API costs money - limit usage
 def analyze_drug_for_disease(request: Request, smiles: str, disease: str, drug_name: str = ""):
     """
@@ -1603,7 +1649,7 @@ def explain_e2e_flow(request: Request):
 
 # ===== SHAPETHESIAS EVOLUTIONARY ALGORITHM ENDPOINTS =====
 
-@app.post("/shapethesias/evolve")
+@app.post("/shapethesias/evolve", response_model=EvolutionResult)
 @limiter.limit("5/minute")  # Expensive: Generates and scores 100 molecular variants
 def shapethesias_evolve(request: Request, parent_smiles: str, num_variants: int = 100, generation: int = 1):
     """
