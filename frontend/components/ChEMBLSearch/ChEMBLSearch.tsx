@@ -210,12 +210,18 @@ export function ChEMBLSearch() {
                   </div>
                   <div>
                     <p className="text-xs text-text-secondary mb-1">Mol. Weight</p>
-                    <p className="text-sm font-mono font-bold">{molecule.molecular_weight.toFixed(2)} Da</p>
+                    <p className="text-sm font-mono font-bold">
+                      {molecule.molecular_weight && typeof molecule.molecular_weight === 'number'
+                        ? molecule.molecular_weight.toFixed(2) + ' Da'
+                        : 'N/A'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-text-secondary mb-1">AlogP</p>
                     <p className="text-sm font-mono font-bold">
-                      {molecule.alogp !== null ? molecule.alogp.toFixed(2) : 'N/A'}
+                      {molecule.alogp !== null && typeof molecule.alogp === 'number'
+                        ? molecule.alogp.toFixed(2)
+                        : 'N/A'}
                     </p>
                   </div>
                   <div>
