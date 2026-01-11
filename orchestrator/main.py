@@ -132,10 +132,14 @@ openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 # Use gpt-4o if available (newest), fallback to gpt-4-turbo (128K context)
 GPT_MODEL = "gpt-4o"  # Newest GPT with extended context window (128K tokens)
 
-# ===== CONFIG =====
-SMARTCHEM_BASE = "http://localhost:8000"
-BIONEMO_BASE = "http://localhost:5000"
+# ===== SERVICE CONFIGURATION =====
+# External service URLs (configurable via environment variables)
+SMARTCHEM_BASE = os.getenv("SMARTCHEM_URL", "http://localhost:8000")
+BIONEMO_BASE = os.getenv("BIONEMO_URL", "http://localhost:5000")
 ADMET_MODEL = None  # Will load ADMET predictor from EBNA1
+
+logger.info(f"SmartChem service: {SMARTCHEM_BASE}")
+logger.info(f"BioNeMo service: {BIONEMO_BASE}")
 
 # ===== GITHUB TOOLS INTEGRATION (8 TOOLS) =====
 GITHUB_TOOLS = {
@@ -261,7 +265,8 @@ class ShapetheciasEvolution:
                         try:
                             mol.RemoveAtom(atom_to_remove)
                             mutations.append("Removed atom")
-                        except:
+                        except (RuntimeError, ValueError) as e:
+                            logger.debug(f"Failed to remove atom: {e}")
                             pass
 
             # Convert back to canonical SMILES
@@ -506,7 +511,7 @@ def generate_3d_coordinates(smiles: str) -> Optional[str]:
         return sdf_string
 
     except Exception as e:
-        print(f"Error generating 3D coordinates: {e}")
+        logger.error(f"Error generating 3D coordinates: {e}")
         return None
 
 def calculate_advanced_admet(smiles: str) -> dict:
@@ -624,7 +629,7 @@ def calculate_advanced_admet(smiles: str) -> dict:
             "synthetic_accessibility": sa_score
         }
     except Exception as e:
-        print(f"Error in ADMET calculation: {e}")
+        logger.error(f"Error in ADMET calculation: {e}")
         return {}
 
 # ===== STAGE 1: SMART-CHEM GENERATION =====
@@ -768,7 +773,7 @@ def stage_3_predict_admet(molecules: List[dict]) -> List[dict]:
 
             admet_results.append(result)
         except Exception as e:
-            print(f"  Error processing {smiles}: {e}")
+            logger.error(f"  Error processing {smiles}: {e}")
             continue
 
     return admet_results
@@ -800,10 +805,10 @@ async def discover_drugs(req: GenerationRequest):
     3. Predict ADMET properties (EBNA1 inspired)
     4. Return ranked candidates
     """
-    print(f"\n🚀 Starting drug discovery for {req.target_name}...")
+    logger.info(f"🚀 Starting drug discovery for {req.target_name}...")
 
     # Stage 1: Generate
-    print("  [1/3] Generating molecules with Smart-Chem...")
+    logger.info("  [1/3] Generating molecules with Smart-Chem...")
     try:
         generated = await stage_1_generate_molecules(
             req.num_molecules,
@@ -811,24 +816,24 @@ async def discover_drugs(req: GenerationRequest):
             req.target_logp,
             req.target_sas
         )
-        print(f"  ✅ Generated {len(generated)} molecules")
+        logger.info(f"  ✅ Generated {len(generated)} molecules")
     except Exception as e:
         raise HTTPException(500, f"Generation failed: {str(e)}")
 
     # Stage 2: Validate & Dock
-    print("  [2/3] Validating and docking with BioNeMo...")
+    logger.info("  [2/3] Validating and docking with BioNeMo...")
     try:
         docked = await stage_2_validate_and_dock(generated, req.protein_pdb)
-        print(f"  ✅ Validated {len(docked)} molecules")
+        logger.info(f"  ✅ Validated {len(docked)} molecules")
     except Exception as e:
-        print(f"  ⚠️  Docking had issues: {str(e)}, continuing with generated molecules")
+        logger.warning(f"  ⚠️  Docking had issues: {str(e)}, continuing with generated molecules")
         docked = generated
 
     # Stage 3: ADMET
-    print("  [3/3] Predicting ADMET properties...")
+    logger.info("  [3/3] Predicting ADMET properties...")
     try:
         with_admet = stage_3_predict_admet(docked)
-        print(f"  ✅ Predicted ADMET for {len(with_admet)} molecules")
+        logger.info(f"  ✅ Predicted ADMET for {len(with_admet)} molecules")
     except Exception as e:
         raise HTTPException(500, f"ADMET prediction failed: {str(e)}")
 
@@ -884,7 +889,7 @@ async def discover_drugs(req: GenerationRequest):
         ]
     )
 
-    print(f"✨ Discovery complete! Top candidate: {ranked[0].get('smiles')}")
+    logger.info(f"✨ Discovery complete! Top candidate: {ranked[0].get('smiles')}")
     return result
 
 @app.get("/status/smartchem")
@@ -918,7 +923,7 @@ def demo_discovery(request: Request, req: GenerationRequest):
     Rate Limited: 10 requests/minute to prevent abuse
     """
     logger.info(f"Demo Discovery for {req.target_name}", extra={'request_id': request.state.request_id})
-    print(f"🧪 Demo Discovery for {req.target_name}...")
+    logger.info(f"🧪 Demo Discovery for {req.target_name}...")
 
     # Select target-specific molecules
     target_lower = req.target_name.lower()
@@ -1067,7 +1072,7 @@ def demo_discovery(request: Request, req: GenerationRequest):
         ]
     )
 
-    print(f"✅ Demo complete! {len(ranked)} molecules scored")
+    logger.info(f"✅ Demo complete! {len(ranked)} molecules scored")
     return result
 
 @app.get("/health")
