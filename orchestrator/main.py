@@ -141,6 +141,60 @@ ADMET_MODEL = None  # Will load ADMET predictor from EBNA1
 logger.info(f"SmartChem service: {SMARTCHEM_BASE}")
 logger.info(f"BioNeMo service: {BIONEMO_BASE}")
 
+# ===== INPUT VALIDATION =====
+def validate_smiles(smiles: str) -> dict:
+    """
+    Validate SMILES string with comprehensive error messages.
+
+    Returns:
+        dict with validation result
+
+    Raises:
+        HTTPException: If validation fails (HTTP 400)
+    """
+    if not smiles or not smiles.strip():
+        raise HTTPException(400, detail={
+            "error": "SMILES string is empty",
+            "suggestion": "Provide a valid SMILES (e.g., 'CC(=O)Oc1ccccc1C(=O)O' for aspirin)"
+        })
+
+    smiles = smiles.strip()
+
+    # Check basic syntax
+    import re
+    if not re.match(r'^[A-Za-z0-9@+\-\[\]\(\)=#$:.\/\\%]+$', smiles):
+        raise HTTPException(400, detail={
+            "error": "Invalid characters in SMILES",
+            "provided": smiles[:50]
+        })
+
+    if not Chem:
+        return {"valid": True, "smiles": smiles}
+
+    # Validate with RDKit
+    try:
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None:
+            raise HTTPException(400, detail={
+                "error": "RDKit cannot parse this SMILES",
+                "provided": smiles,
+                "examples": ["Aspirin: CC(=O)Oc1ccccc1C(=O)O", "Caffeine: CN1C=NC2=C1C(=O)N(C(=O)N2C)C"]
+            })
+
+        mw = Descriptors.MolWt(mol)
+        if mw < 10 or mw > 2000:
+            raise HTTPException(400, detail={
+                "error": f"Molecular weight {mw:.1f} Da is outside valid range (10-2000)",
+                "suggestion": "Drug-like molecules are typically 150-900 Da"
+            })
+
+        return {"valid": True, "smiles": smiles, "canonical": Chem.MolToSmiles(mol)}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(400, detail={"error": f"Validation failed: {str(e)}"})
+
 # ===== GITHUB TOOLS INTEGRATION (8 TOOLS) =====
 GITHUB_TOOLS = {
     "generation": "Smart-Chem VAE (GitHub: aspirin-code/smart-chem)",
@@ -1176,6 +1230,9 @@ def comprehensive_analysis(request: Request, smiles: str):
     """
     Comprehensive molecular analysis with all GitHub tools.
     """
+    # Validate SMILES input
+    validate_smiles(smiles)
+
     try:
         admet = calculate_advanced_admet(smiles)
         sa_score = calculate_synthetic_accessibility(smiles)
@@ -1549,6 +1606,9 @@ def shapethesias_evolve(request: Request, parent_smiles: str, num_variants: int 
     5. Score all 100 candidates
     6. Return top 5 for researcher selection
     """
+    # Validate parent SMILES input
+    validate_smiles(parent_smiles)
+
     # Generate 100 variants
     variants = ShapetheciasEvolution.evolve_generation(parent_smiles, num_variants=num_variants)
 
