@@ -6,7 +6,8 @@ import { Button } from '@/components/shared/Button';
 import { Input } from '@/components/shared/Input';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { ErrorMessage } from '@/components/shared/ErrorMessage';
-import { BookOpen, ExternalLink, FileText } from 'lucide-react';
+import { useSearchCache } from '@/hooks/useSearchCache';
+import { BookOpen, ExternalLink, FileText, Database } from 'lucide-react';
 
 interface PubMedArticle {
   pmid: string;
@@ -24,6 +25,10 @@ export function PubMedSearch() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAbstracts, setShowAbstracts] = useState<Set<string>>(new Set());
+  const [fromCache, setFromCache] = useState(false);
+
+  // Cache with 5 minute TTL
+  const { getCached, setCached, cacheSize } = useSearchCache<PubMedArticle[]>({ ttl: 5 * 60 * 1000 });
 
   const searchPubMed = async () => {
     if (!query.trim()) {
@@ -31,9 +36,21 @@ export function PubMedSearch() {
       return;
     }
 
+    // Check cache first
+    const cacheKey = `pubmed:${query.toLowerCase().trim()}`;
+    const cached = getCached(cacheKey);
+
+    if (cached) {
+      setResults(cached);
+      setFromCache(true);
+      setError(null);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setResults([]);
+    setFromCache(false);
 
     try {
       // Use NCBI E-utilities API
@@ -68,6 +85,9 @@ export function PubMedSearch() {
       });
 
       setResults(articles);
+
+      // Cache successful results
+      setCached(cacheKey, articles);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to search PubMed');
     } finally {
@@ -126,7 +146,15 @@ export function PubMedSearch() {
         {results.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between py-2 border-b-2 border-black">
-              <h3 className="font-bold">Results ({results.length})</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold">Results ({results.length})</h3>
+                {fromCache && (
+                  <span className="flex items-center gap-1 text-xs font-mono bg-panel px-2 py-1 border border-black">
+                    <Database className="h-3 w-3" />
+                    Cached ({cacheSize} searches)
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-text-secondary">Source: PubMed / NCBI E-utilities</p>
             </div>
 

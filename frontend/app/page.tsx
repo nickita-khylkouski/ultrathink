@@ -16,6 +16,7 @@ import { PubMedSearch } from '@/components/PubMedSearch/PubMedSearch';
 import { OpenSourceModels } from '@/components/OpenSourceModels/OpenSourceModels';
 import { ChEMBLSearch } from '@/components/ChEMBLSearch/ChEMBLSearch';
 import { MolecularDocking } from '@/components/MolecularDocking/MolecularDocking';
+import { KeyboardShortcuts } from '@/components/KeyboardShortcuts/KeyboardShortcuts';
 import { Card } from '@/components/shared/Card';
 import { Activity, XCircle, FlaskConical, Dna, Sparkles, BookOpen, Code2, Database, Target } from 'lucide-react';
 
@@ -292,23 +293,41 @@ export default function Home() {
                     Evolved Variants ({variants.length})
                   </h3>
                   {variants.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-2 max-h-[600px] overflow-y-auto">
-                      {variants.slice(0, 10).map((variant, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => setSelectedVariant(variant)}
-                          className={`p-3 text-left border-2 border-black transition-colors ${
-                            selectedVariant?.smiles === variant.smiles
-                              ? 'bg-black text-white'
-                              : 'bg-white hover:bg-panel'
-                          }`}
-                        >
-                          <p className="text-xs font-mono mb-1">{variant.smiles}</p>
-                          <p className="text-xs">
-                            Rank: {variant.rank} | ADMET: {variant.admet_score.toFixed(3)}
-                          </p>
-                        </button>
-                      ))}
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-1 gap-2 max-h-[600px] overflow-y-auto">
+                        {variants.slice(0, 10).map((variant, idx) => (
+                          <div
+                            key={idx}
+                            className={`border-2 border-black ${
+                              selectedVariant?.smiles === variant.smiles
+                                ? 'bg-black text-white'
+                                : 'bg-white'
+                            }`}
+                          >
+                            <button
+                              onClick={() => setSelectedVariant(variant)}
+                              className="w-full p-3 text-left hover:bg-panel transition-colors"
+                            >
+                              <div className="flex items-start justify-between mb-1">
+                                <p className="text-xs font-mono flex-1">{variant.smiles}</p>
+                                {idx === 0 && (
+                                  <span className="text-xs font-bold bg-panel px-2 py-1 border border-black ml-2">
+                                    🏆 BEST
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between text-xs">
+                                <span>
+                                  Rank #{variant.rank} | Gen {variant.generation}
+                                </span>
+                                <span className="font-mono font-bold">
+                                  ADMET: {(variant.admet_score * 100).toFixed(1)}%
+                                </span>
+                              </div>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ) : (
                     <p className="text-sm text-text-secondary text-center py-8">
@@ -366,8 +385,13 @@ export default function Home() {
             ULTRATHINK v2.0 | Open-Source Computational Drug Discovery Platform
             <br />
             Built with DeepChem, RDKit, ESMFold, MolGAN, PubMed, ChEMBL, and AutoDock Vina
+            <br />
+            <span className="font-mono text-xs">Press ? for keyboard shortcuts</span>
           </p>
         </footer>
+
+        {/* Keyboard Shortcuts */}
+        <KeyboardShortcuts onTabChange={(tab) => setCurrentSystem(tab as SystemTab)} />
       </div>
     </div>
   );

@@ -4,7 +4,12 @@ import { useState } from 'react';
 import { Card } from '@/components/shared/Card';
 import { Button } from '@/components/shared/Button';
 import { Badge } from '@/components/shared/Badge';
-import { GitBranch, ExternalLink, Star, Code2, Beaker } from 'lucide-react';
+// Use individual imports to avoid Next.js barrel optimization issues
+import { GitBranch } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
+import { Star } from 'lucide-react';
+import { Code2 } from 'lucide-react';
+import { Beaker } from 'lucide-react';
 
 interface OpenSourceModel {
   name: string;
