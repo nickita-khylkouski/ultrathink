@@ -14,10 +14,12 @@ import { MoleculeViewer } from '@/components/MoleculeViewer';
 import { ProteinViewer } from '@/components/ProteinViewer';
 import { PubMedSearch } from '@/components/PubMedSearch/PubMedSearch';
 import { OpenSourceModels } from '@/components/OpenSourceModels/OpenSourceModels';
+import { ChEMBLSearch } from '@/components/ChEMBLSearch/ChEMBLSearch';
+import { MolecularDocking } from '@/components/MolecularDocking/MolecularDocking';
 import { Card } from '@/components/shared/Card';
-import { Activity, XCircle, FlaskConical, Dna, Sparkles, BookOpen, Code2 } from 'lucide-react';
+import { Activity, XCircle, FlaskConical, Dna, Sparkles, BookOpen, Code2, Database, Target } from 'lucide-react';
 
-type SystemTab = 'discovery' | 'esmfold' | 'molgan' | 'research' | 'models';
+type SystemTab = 'discovery' | 'esmfold' | 'molgan' | 'research' | 'models' | 'chembl' | 'docking';
 
 export default function Home() {
   const { isOnline, checkHealth, statusMessage } = useAppStore();
@@ -136,7 +138,7 @@ export default function Home() {
           <button
             role="tab"
             onClick={() => setCurrentSystem('models')}
-            className={`flex items-center gap-2 px-6 py-3 text-sm font-bold transition-colors ${
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-bold border-r-2 border-black transition-colors ${
               currentSystem === 'models'
                 ? 'bg-black text-white'
                 : 'bg-white text-black hover:bg-panel'
@@ -144,6 +146,32 @@ export default function Home() {
           >
             <Code2 className="h-4 w-4" />
             Open-Source Models
+          </button>
+
+          <button
+            role="tab"
+            onClick={() => setCurrentSystem('chembl')}
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-bold border-r-2 border-black transition-colors ${
+              currentSystem === 'chembl'
+                ? 'bg-black text-white'
+                : 'bg-white text-black hover:bg-panel'
+            }`}
+          >
+            <Database className="h-4 w-4" />
+            ChEMBL Database
+          </button>
+
+          <button
+            role="tab"
+            onClick={() => setCurrentSystem('docking')}
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-bold transition-colors ${
+              currentSystem === 'docking'
+                ? 'bg-black text-white'
+                : 'bg-white text-black hover:bg-panel'
+            }`}
+          >
+            <Target className="h-4 w-4" />
+            Docking
           </button>
         </div>
 
@@ -318,12 +346,26 @@ export default function Home() {
           </div>
         )}
 
+        {/* NEW: ChEMBL Database Tab */}
+        {currentSystem === 'chembl' && (
+          <div role="tabpanel">
+            <ChEMBLSearch />
+          </div>
+        )}
+
+        {/* NEW: Molecular Docking Tab */}
+        {currentSystem === 'docking' && (
+          <div role="tabpanel">
+            <MolecularDocking />
+          </div>
+        )}
+
         {/* Footer */}
         <footer className="mt-12 pt-6 border-t-2 border-black text-center">
           <p className="text-xs text-text-secondary">
-            ULTRATHINK v1.0 | Open-Source Computational Drug Discovery Platform
+            ULTRATHINK v2.0 | Open-Source Computational Drug Discovery Platform
             <br />
-            Built with DeepChem, RDKit, ESMFold, MolGAN, and PubMed E-utilities
+            Built with DeepChem, RDKit, ESMFold, MolGAN, PubMed, ChEMBL, and AutoDock Vina
           </p>
         </footer>
       </div>
