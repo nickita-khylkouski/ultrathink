@@ -35,7 +35,7 @@ export default function Home() {
   const { isOnline, checkHealth, statusMessage } = useAppStore();
   const { selectedCandidate, loadCandidates } = useDiscoveryStore();
   const { currentProtein } = useProteinStore();
-  const { selectedVariant, variants, setSelectedVariant } = useMolGANStore();
+  const { selectedVariant, variants, setSelectedVariant, generation } = useMolGANStore();
   const [currentSystem, setCurrentSystem] = useState<SystemTab>('discovery');
 
   // Check health on mount
@@ -265,9 +265,9 @@ export default function Home() {
                 <Card className="border-2 border-black lg:col-span-2">
                   <div className="p-4">
                     <h3 className="font-bold mb-4 text-lg border-b-2 border-black pb-2">
-                      Protein Structure: {currentProtein.name}
+                      Protein Structure: {currentProtein.protein_name}
                     </h3>
-                    <ProteinViewer pdbData={currentProtein.pdb} />
+                    <ProteinViewer pdbData={currentProtein.pdb_structure} />
                   </div>
                 </Card>
               )}
@@ -327,7 +327,7 @@ export default function Home() {
                               </div>
                               <div className="flex items-center justify-between text-xs">
                                 <span>
-                                  Rank #{variant.rank} | Gen {variant.generation}
+                                  Rank #{variant.rank} | Gen {generation}
                                 </span>
                                 <span className="font-mono font-bold">
                                   ADMET: {(variant.admet_score * 100).toFixed(1)}%

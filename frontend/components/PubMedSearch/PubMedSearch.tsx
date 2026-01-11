@@ -162,7 +162,7 @@ ${idx + 1}. ${article.title}
           </div>
         )}
 
-        {error && <ErrorMessage message={error} className="mb-4" />}
+        {error && <ErrorMessage error={error} />}
 
         {results.length > 0 && (
           <div className="space-y-4">
