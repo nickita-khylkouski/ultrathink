@@ -90,10 +90,50 @@
         .common-drugs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
         .drug-btn { padding: 6px; background: #003355; color: #00ffff; border: 1px solid #00ffff; border-radius: 3px; cursor: pointer; font-size: 10px; }
         .drug-btn:hover { background: #004477; }
+
+        /* Connection Status Indicator */
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #1a1a1a;
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 1px solid #333;
+            font-size: 10px;
+            z-index: 1000;
+        }
+        .connection-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
+        }
+        .connection-dot.online {
+            background: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        .connection-dot.offline {
+            background: #ff0000;
+            box-shadow: 0 0 10px #ff0000;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Connection Status Indicator -->
+        <div class="connection-status">
+            <div class="connection-dot offline" id="connection-dot"></div>
+            <span id="connection-text">Checking...</span>
+        </div>
+
         <h1>🧬 AI DRUG DISCOVERY PLATFORM 🔬</h1>
         <div class="subtitle">Two Systems: Traditional Screening + Evolutionary Generation</div>
 
@@ -929,9 +969,24 @@
     </div>
 
     <script>
-        const API_URL = "http://localhost:7001";
+        // ===== CONFIGURATION =====
+        // Auto-detect API URL based on environment
+        const API_URL = (() => {
+            const hostname = window.location.hostname;
+            // Production: use same host
+            if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+                return `${window.location.protocol}//${hostname}:7001`;
+            }
+            // Development: localhost
+            return "http://localhost:7001";
+        })();
+
+        // ===== STATE =====
         let allCandidates = [];
         let selectedCandidate = null;
+        let backendHealthy = false;
+        let retryCount = 0;
+        const MAX_RETRIES = 3;
 
         // Drug database with names and scientific data
         const drugDatabase = {
@@ -1041,6 +1096,102 @@
             }
 
             return { valid: true, cleaned: cleaned };
+        }
+
+        // ===== API UTILITIES =====
+        // Health check with retry
+        async function checkBackendHealth() {
+            const dot = document.getElementById('connection-dot');
+            const text = document.getElementById('connection-text');
+
+            try {
+                const response = await fetch(`${API_URL}/health`, { method: 'GET', signal: AbortSignal.timeout(3000) });
+                if (response.ok) {
+                    backendHealthy = true;
+                    dot.className = 'connection-dot online';
+                    text.textContent = 'Backend Online';
+                    return true;
+                }
+            } catch (error) {
+                backendHealthy = false;
+            }
+
+            dot.className = 'connection-dot offline';
+            text.textContent = 'Backend Offline';
+            return false;
+        }
+
+        // Retry wrapper with exponential backoff
+        async function fetchWithRetry(url, options = {}, maxRetries = MAX_RETRIES) {
+            for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                try {
+                    const response = await fetch(url, options);
+
+                    // Success - reset retry count
+                    retryCount = 0;
+                    return response;
+
+                } catch (error) {
+                    // Last attempt failed
+                    if (attempt === maxRetries) {
+                        throw error;
+                    }
+
+                    // Exponential backoff: 1s, 2s, 4s
+                    const delay = Math.pow(2, attempt) * 1000;
+                    updateStatus(`⚠️ Connection failed, retrying in ${delay/1000}s... (${attempt + 1}/${maxRetries})`, "warning");
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+        // ===== LOCAL STORAGE CACHING =====
+        function saveCandidates(candidates) {
+            try {
+                localStorage.setItem('ultrathink_candidates', JSON.stringify({
+                    data: candidates,
+                    timestamp: Date.now()
+                }));
+            } catch (e) {
+                console.error("Failed to cache candidates:", e);
+            }
+        }
+
+        function loadCandidates() {
+            try {
+                const cached = localStorage.getItem('ultrathink_candidates');
+                if (cached) {
+                    const { data, timestamp } = JSON.parse(cached);
+                    // Cache valid for 1 hour
+                    if (Date.now() - timestamp < 3600000) {
+                        return data;
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to load cached candidates:", e);
+            }
+            return null;
+        }
+
+        function clearCache() {
+            localStorage.removeItem('ultrathink_candidates');
+        }
+
+        // ===== BROWSER NOTIFICATIONS =====
+        async function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                await Notification.requestPermission();
+            }
+        }
+
+        function showNotification(title, message) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(title, {
+                    body: message,
+                    icon: 'favicon.svg',
+                    badge: 'favicon.svg'
+                });
+            }
         }
 
         // ===== ERROR HANDLING HELPERS =====
@@ -1221,7 +1372,8 @@
             const numMol = parseInt(document.getElementById("num-mol").value);
 
             try {
-                const resp = await fetch(`${API_URL}/orchestrate/demo`, {
+                // Use retry-enabled fetch
+                const resp = await fetchWithRetry(`${API_URL}/orchestrate/demo`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -1240,8 +1392,19 @@
 
                 const data = await resp.json();
                 allCandidates = data.top_candidates || [];
+
+                // Save to localStorage for persistence
+                saveCandidates(allCandidates);
+
                 displayCandidates(allCandidates);
                 updateStatus(`✅ Generated ${allCandidates.length} candidates for ${target}`, "healthy");
+
+                // Show browser notification
+                showNotification(
+                    '🎉 Discovery Complete!',
+                    `Found ${allCandidates.length} drug candidates for ${target}`
+                );
+
             } catch (e) {
                 // Use enhanced error display
                 hideProgressBar("candidates-list");
@@ -3226,7 +3389,30 @@ Respond with: Legal status (NCE/not), Pharmacological novelty (0-100%), and reco
         }
 
         // ===== KEYBOARD SHORTCUTS =====
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            // ===== INITIALIZATION =====
+            // Check backend health on page load
+            updateStatus("🔍 Checking backend connection...", "info");
+            const healthy = await checkBackendHealth();
+
+            if (healthy) {
+                updateStatus("✅ Backend connected! Ready to discover drugs.", "healthy");
+            } else {
+                updateStatus("⚠️ Backend not responding. Please start the backend server.", "warning");
+            }
+
+            // Request notification permission
+            await requestNotificationPermission();
+
+            // Load cached candidates if available
+            const cachedCandidates = loadCandidates();
+            if (cachedCandidates && cachedCandidates.length > 0) {
+                allCandidates = cachedCandidates;
+                displayCandidates(allCandidates);
+                updateStatus(`📦 Loaded ${allCandidates.length} cached candidates (from previous session)`, "info");
+            }
+
+            // ===== KEYBOARD SHORTCUTS =====
             document.addEventListener('keydown', (e) => {
                 // Ctrl/Cmd + D: Download PDB (if available)
                 if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
