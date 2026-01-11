@@ -12,7 +12,7 @@ echo ""
 echo "🧹 Cleaning up old processes..."
 lsof -i :8000 | grep LISTEN | awk '{print $2}' | xargs kill -9 2>/dev/null
 lsof -i :5000 | grep LISTEN | awk '{print $2}' | xargs kill -9 2>/dev/null
-lsof -i :7000 | grep LISTEN | awk '{print $2}' | xargs kill -9 2>/dev/null
+lsof -i :7001 | grep LISTEN | awk '{print $2}' | xargs kill -9 2>/dev/null
 lsof -i :3000 | grep LISTEN | awk '{print $2}' | xargs kill -9 2>/dev/null
 
 sleep 1
@@ -27,7 +27,7 @@ echo "🚀 Starting services in background..."
 echo ""
 
 # Start services in background
-echo "[1] Starting Orchestrator on port 7000..."
+echo "[1] Starting Orchestrator on port 7001..."
 cd "$HACKATHON_DIR/orchestrator" && python main.py > /tmp/orch.log 2>&1 &
 ORCH_PID=$!
 echo "    PID: $ORCH_PID"
@@ -66,7 +66,7 @@ check_service() {
     fi
 }
 
-check_service 7000 "Orchestrator"
+check_service 7001 "Orchestrator"
 check_service 8000 "Smart-Chem"
 check_service 5000 "BioNeMo"
 check_service 3000 "Web UI"

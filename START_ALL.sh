@@ -45,9 +45,9 @@ else
     } || echo "❌ BioNeMo directory not found"
 fi
 
-echo -e "\n${YELLOW}[3/4] Starting Orchestrator (Port 7000)${NC}"
-if check_port 7000; then
-    echo "⚠️  Port 7000 already in use, skipping..."
+echo -e "\n${YELLOW}[3/4] Starting Orchestrator (Port 7001)${NC}"
+if check_port 7001; then
+    echo "⚠️  Port 7001 already in use, skipping..."
 else
     cd "$HACKATHON_DIR/orchestrator" 2>/dev/null && {
         echo "📦 Installing dependencies..."
@@ -76,7 +76,7 @@ echo -e "${GREEN}=======================================${NC}\n"
 echo -e "${CYAN}📍 SERVICE ENDPOINTS:${NC}"
 echo "   • Smart-Chem:    http://localhost:8000"
 echo "   • BioNeMo:       http://localhost:5000"
-echo "   • Orchestrator:  http://localhost:7000"
+echo "   • Orchestrator:  http://localhost:7001"
 echo -e "   • ${YELLOW}Web UI:${NC}          http://localhost:3000 ⭐"
 echo ""
 

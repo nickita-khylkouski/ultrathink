@@ -123,12 +123,69 @@ uvicorn main:app --reload --port 7001
 # Logs to: orchestrator.log
 ```
 
+**Alternative (using python3 directly):**
+```bash
+cd orchestrator
+python3 main.py
+# Also runs on port 7001
+```
+
 **Terminal 2 - Frontend Server:**
 ```bash
 cd web
 python3 -m http.server 3000
 # Open http://localhost:3000
 ```
+
+### 🗄️ Database Setup (Optional)
+
+ULTRATHINK supports optional PostgreSQL database for persistent storage of:
+- User projects and molecules
+- Prediction history
+- ADMET results
+
+**The app works fine without database** - it will run in "database-free mode" with all core features available.
+
+**To enable database features:**
+
+1. **Install PostgreSQL:**
+   ```bash
+   # macOS
+   brew install postgresql
+   brew services start postgresql
+
+   # Ubuntu/Debian
+   sudo apt-get install postgresql postgresql-contrib
+   sudo service postgresql start
+   ```
+
+2. **Create database:**
+   ```bash
+   psql postgres
+   CREATE DATABASE ultrathink_db;
+   \q
+   ```
+
+3. **Configure .env:**
+   ```bash
+   echo "DATABASE_URL=postgresql://localhost/ultrathink_db" >> orchestrator/.env
+   ```
+
+4. **Run migrations:**
+   ```bash
+   cd orchestrator
+   alembic upgrade head
+   ```
+
+5. **Verify:**
+   ```bash
+   # Should show "Database connected successfully" in logs
+   python3 main.py
+   ```
+
+**Database status:**
+- Check `/health` endpoint - shows `"database": "connected"` or `"disconnected"`
+- Logs show: `✅ Database connected successfully` OR `✅ Started in database-free mode`
 
 ### Health Check
 ```bash

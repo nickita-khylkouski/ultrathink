@@ -29,10 +29,19 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from dotenv import load_dotenv
 
-# Database imports
-from database import init_db, close_db, check_db_connection, get_db
-from database.repositories import MoleculeRepository, ProjectRepository, UserRepository, PredictionRepository
-from sqlalchemy.ext.asyncio import AsyncSession
+# Database imports (optional - graceful degradation if not installed)
+try:
+    from database import init_db, close_db, check_db_connection, get_db
+    from database.repositories import MoleculeRepository, ProjectRepository, UserRepository, PredictionRepository
+    from sqlalchemy.ext.asyncio import AsyncSession
+    DATABASE_AVAILABLE = True
+except ImportError as e:
+    DATABASE_AVAILABLE = False
+    # Create mock functions for graceful degradation
+    async def init_db(): pass
+    async def close_db(): pass
+    async def check_db_connection(): return False
+    async def get_db(): yield None
 from fastapi import Depends
 
 # Load environment variables
@@ -365,19 +374,22 @@ async def startup_event():
     Creates tables if they don't exist (or use Alembic migrations for production).
     """
     logger.info("🚀 Starting UltraThink Drugs Orchestrator...")
-    logger.info("📊 Initializing database connection...")
 
-    try:
-        await init_db()
-        db_ok = await check_db_connection()
+    if DATABASE_AVAILABLE:
+        logger.info("📊 Initializing database connection...")
+        try:
+            await init_db()
+            db_ok = await check_db_connection()
 
-        if db_ok:
-            logger.info("✅ Database connected successfully")
-        else:
-            logger.warning("⚠️  Database connection failed - running in degraded mode")
-    except Exception as e:
-        logger.error(f"❌ Database initialization error: {e}")
-        logger.warning("⚠️  Continuing without database - some features will be limited")
+            if db_ok:
+                logger.info("✅ Database connected successfully")
+            else:
+                logger.warning("⚠️  Database connection failed - running in degraded mode")
+        except Exception as e:
+            logger.error(f"❌ Database initialization error: {e}")
+            logger.warning("⚠️  Continuing without database - some features will be limited")
+    else:
+        logger.info("✅ Started in database-free mode (PostgreSQL dependencies not installed)")
 
 
 @app.on_event("shutdown")
@@ -386,13 +398,14 @@ async def shutdown_event():
     Gracefully close database connections on shutdown.
     """
     logger.info("🛑 Shutting down UltraThink Drugs Orchestrator...")
-    logger.info("📊 Closing database connections...")
 
-    try:
-        await close_db()
-        logger.info("✅ Database connections closed")
-    except Exception as e:
-        logger.error(f"❌ Error closing database: {e}")
+    if DATABASE_AVAILABLE:
+        logger.info("📊 Closing database connections...")
+        try:
+            await close_db()
+            logger.info("✅ Database connections closed")
+        except Exception as e:
+            logger.error(f"❌ Error closing database: {e}")
 
 
 # ===== ENHANCED ADMET SCORING FUNCTIONS =====

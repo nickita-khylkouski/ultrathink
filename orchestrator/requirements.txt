@@ -29,3 +29,12 @@ passlib[bcrypt]>=1.7.4
 
 # Database Connection Pooling
 greenlet>=3.0.3  # Required for SQLAlchemy async
+
+# AI / LLM
+openai>=1.0.0  # For GPT-4 molecular analysis
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.11.1
+pytest-cov>=4.1.0  # Code coverage

@@ -9,7 +9,7 @@ import json
 import sys
 from typing import Optional
 
-ORCHESTRATOR_URL = "http://localhost:7000"
+ORCHESTRATOR_URL = "http://localhost:7001"
 
 def print_header(text):
     print(f"\n{'='*60}")
