@@ -1,126 +1,146 @@
-# 🧬 Drug Discovery Orchestrator - Hackathon Entry
+# 🧬 ULTRATHINK - AI Drug Discovery Platform
 
-A unified, agentic drug discovery platform that chains together three state-of-the-art molecular generation and validation systems.
+> **Accelerating drug discovery from years to seconds using AI**
 
-## 🎯 The Challenge
+A comprehensive dual-system drug discovery platform combining traditional ADMET screening with evolutionary molecular generation, powered by cutting-edge AI research models.
 
-Drug discovery is computationally expensive and time-consuming. Early-stage hit identification requires:
-- **Generating novel molecules** with desired properties
-- **Validating candidates** through docking and similarity screening
-- **Predicting safety** via ADMET and toxicity profiling
+## 🎯 The Problem We're Solving
 
-Traditionally, these steps happen sequentially in silos. We built a **unified orchestrator** that chains them automatically.
+Traditional drug discovery:
+- **Takes 10-15 YEARS** to bring a drug to market
+- **Costs $2-3 BILLION** per successful drug
+- **90% failure rate** in clinical trials
+- Relies on trial-and-error screening of millions of compounds
 
-## ✨ Our Solution
+**ULTRATHINK solves this** by using AI to:
+- ✅ Predict drug efficacy, safety, and bioavailability in **seconds**
+- ✅ Generate novel molecular structures that don't exist yet
+- ✅ Validate protein-drug interactions with 3D structure prediction
+- ✅ Optimize molecules through evolutionary algorithms
 
-We integrated **3 best-in-class projects** into a single agentic pipeline:
-
-### 🏗️ Architecture
+## 🏗️ Architecture Overview
 
 ```
-User Input (Target Protein/Disease)
-         ↓
-[STAGE 1] Smart-Chem - Molecular Generation
-         ↓ (generates 10+ molecules with targeted QED, LogP, SAS)
-[STAGE 2] BioNeMo - Validation & Docking
-         ↓ (similarity search + AI docking with NVIDIA DiffDock)
-[STAGE 3] EBNA1 - ADMET Prediction
-         ↓ (Lipinski's rule, BBB penetration, toxicity)
-      Final Ranking
-         ↓
-    Top 5 Candidates
+┌─────────────────────────────────────────────────────────────┐
+│                     FRONTEND (Web UI)                        │
+│  • System 1: Traditional Drug Screening                     │
+│  • System 2: Evolutionary Molecular Generation              │
+│  • ESMFold: Protein Structure Prediction                    │
+│  • 3D Molecular Visualization (3Dmol.js)                    │
+└──────────────────┬──────────────────────────────────────────┘
+                   │ HTTP/JSON API
+┌──────────────────▼──────────────────────────────────────────┐
+│              BACKEND (FastAPI Orchestrator)                  │
+│  • Drug Discovery Endpoints (/discover, /evolve)            │
+│  • ESMFold Integration (/research/esmfold/predict)          │
+│  • MolGAN Integration (/research/molgan/generate)           │
+│  • ADMET Property Calculation (RDKit)                       │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+    ┌──────────────┼──────────────┐
+    │              │              │
+┌───▼────┐  ┌──────▼──────┐  ┌───▼────────┐
+│ RDKit  │  │  ESMFold    │  │  MolGAN    │
+│ ADMET  │  │  Protein    │  │  Molecule  │
+│ Calc   │  │  Structure  │  │  Generator │
+└────────┘  └─────────────┘  └────────────┘
 ```
 
-### 🔧 The Three Components
+## 🎨 Two-System Design Philosophy
 
-#### 1. **Smart-Chem** (Port 8000) - Agentic Generation
-- **What it does**: Generates novel molecules using a VAE trained on SELFIES
-- **Why it's here**: The most "agentic" architecture - true async event-driven system with background workers
-- **Integration point**: `/generate/targeted` endpoint
-- **Output**: SMILES strings with predicted QED, LogP, SAS scores
+### **System 1: Traditional Drug Screening**
+*Find the BEST existing drug for your disease*
 
-#### 2. **BioNeMo** (Port 5000) - Validation & Docking
-- **What it does**:
-  - RDKit-based molecular similarity screening
-  - NVIDIA DiffDock integration for AI-powered protein-ligand docking
-- **Why it's here**: State-of-the-art docking with modern ML framework
-- **Integration points**: `/screen` (similarity), `/predict/diffdock` (docking)
-- **Output**: Validated molecules with docking scores and similar compounds
+- Input: Disease/target name + number of candidates
+- Process: Generate molecules → Calculate ADMET properties → Rank by fitness
+- Output: Top 5 drug candidates with full property analysis
+- **Use when**: You want to screen existing chemical space
 
-#### 3. **EBNA1** (Jupyter notebooks) - ADMET & Safety
-- **What it does**:
-  - Complete ADMET profiling (absorption, distribution, metabolism, excretion)
-  - Lipinski's rule of 5 violation assessment
-  - Toxicity prediction
-  - BBB penetration prediction
-- **Why it's here**: Rigorous scientific pipeline with real validated results
-- **Integration method**: RDKit descriptor extraction + Lipinski scoring
-- **Output**: Safety scores, toxicity flags, drug-likeness metrics
+### **System 2: Shapethesias Evolution**
+*Generate NEW drugs through evolutionary mutation*
+
+- Input: Starting molecule (e.g., Aspirin)
+- Process: Mutate → Score → Select → Repeat
+- Philosophy: "Ship of Theseus" - if you mutate Aspirin 100 times, is it still Aspirin?
+- Output: Novel molecular structures optimized for drug-likeness
+- **Use when**: You want to discover entirely new molecules
+
+### **ESMFold: Protein Structure Prediction**
+*Predict 3D protein targets for drug docking*
+
+- Input: Amino acid sequence OR protein name
+- Process: Fetch from RCSB PDB OR predict with ESMFold
+- Output: 3D protein structure (PDB format) + visualization
+- **Use when**: You need protein targets for molecular docking
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 ```bash
-python 3.9+
-pip (for package management)
+# Python 3.9+
+python3 --version
+
+# Install backend dependencies
+pip install fastapi uvicorn rdkit-pypi requests
+
+# Install Smart-Chem VAE (submodule)
+git submodule update --init --recursive
 ```
 
-### Installation
+### Running the Application
 
-1. **Navigate to hackathon directory**:
+**Terminal 1 - Backend Server:**
 ```bash
-cd ~/hackathon
+cd orchestrator
+python3 main.py
+# Runs on http://localhost:7001
 ```
 
-2. **Run all services** (one command):
+**Terminal 2 - Frontend Server:**
 ```bash
-chmod +x START_SERVICES.sh
-./START_SERVICES.sh
+cd web
+python3 -m http.server 3000
+# Open http://localhost:3000
 ```
 
-This will:
-- Install dependencies for all 3 projects
-- Start Smart-Chem on port 8000
-- Start BioNeMo on port 5000
-- Start Orchestrator on port 7000
-
-### Running the Pipeline
-
-In a new terminal:
-
+### Health Check
 ```bash
-cd ~/hackathon/orchestrator
-python test_pipeline.py
+curl http://localhost:7001/health
+# Expected: {"status": "healthy", ...}
 ```
 
-Expected output:
-```
-==========================================
-  🚀 Running Drug Discovery for EBNA1
-==========================================
+---
 
-⏳ Pipeline running (this may take 30-120 seconds)...
+## 🔬 Research Integrations
 
-✨ RESULTS
-Target: EBNA1
-Timestamp: 2026-01-10T...
+### 1. **ESMFold** (Meta AI, 2022)
+- **Paper**: "Language models of protein sequences at the edge of structure prediction"
+- **Performance**: 60X faster than AlphaFold2, ~95% accuracy
+- **Implementation**: `/orchestrator/esmfold_integration.py`
+- **Features**:
+  - Fetches real experimentally-determined structures from RCSB PDB
+  - Fallback to ESMFold prediction for custom sequences
+  - Supports common proteins: ACE2, SPIKE, INSULIN, HEMOGLOBIN, LYSOZYME
 
-📊 Pipeline Stages:
-1️⃣  Generation Stage: Generated 8/8 molecules
-2️⃣  Docking Stage: Validated 8 molecules
-3️⃣  ADMET Stage: ADMET Predicted 8 molecules
+### 2. **MolGAN** (DeepMind, 2018)
+- **Paper**: "MolGAN: An implicit generative model for small molecular graphs"
+- **Performance**: 100% valid molecules, 10X more chemically sensible than random
+- **Implementation**: `/orchestrator/molgan_integration.py`
+- **Features**:
+  - Generates chemically valid SMILES from latent space
+  - Property-constrained generation (MW, LogP, TPSA targets)
+  - Full ADMET scoring for all generated candidates
 
-🏆 TOP 5 CANDIDATES:
-Rank #1
-  SMILES: CC(=O)Nc1ccc(O)cc1
-  QED Score: 0.89
-  ADMET Score: 0.85
-  MW: 151.16, LogP: 1.23
-  Toxicity Flag: False
-  BBB Penetration: True
+### 3. **RDKit** (Open-Source Cheminformatics)
+- **Purpose**: Molecular property calculation and manipulation
+- **Capabilities**:
+  - ADMET properties: MW, LogP, TPSA, HBD, HBA
+  - Lipinski Rule of 5 validation
+  - BBB permeability prediction
+  - Synthetic accessibility scoring
+  - SMILES parsing and validation
 
-[... more candidates ...]
-```
+---
 
 ## 📊 API Documentation
 
