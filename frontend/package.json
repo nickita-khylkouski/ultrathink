@@ -1,0 +1,36 @@
+{
+  "name": "ultrathink-frontend",
+  "version": "0.5.0",
+  "description": "AI Drug Discovery Platform - Frontend",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@types/node": "^25.0.6",
+    "@types/react": "^19.2.8",
+    "autoprefixer": "^10.4.23",
+    "axios": "^1.13.2",
+    "lucide-react": "^0.562.0",
+    "next": "^14.2.35",
+    "postcss": "^8.5.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.71.0",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3",
+    "zod": "^4.3.5",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^16.1.1"
+  }
+}

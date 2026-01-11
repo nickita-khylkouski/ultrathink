@@ -1,0 +1,508 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                  SUBAGENT 2: DATABASE & PERSISTENCE LAYER                    ║
+║                         Context & Mission Brief                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🎯 YOUR MISSION
+===============
+Build a production-grade PostgreSQL database schema with SQLAlchemy ORM for
+persistent storage of projects, molecules, predictions, protein structures, and
+full user activity history.
+
+📁 CURRENT PROJECT STRUCTURE
+============================
+/Users/nickita/hackathon/
+├── orchestrator/                    ← YOUR PRIMARY WORKSPACE
+│   ├── main.py                      (81KB - main FastAPI app, 29+ endpoints)
+│   ├── esmfold_integration.py       (ESMFold protein structure prediction)
+│   ├── molgan_integration.py        (MolGAN molecular generation)
+│   ├── requirements.txt             (Python dependencies)
+│   └── test_pipeline.py             (Test script)
+│
+├── Smart-Chem/                      ← REFERENCE IMPLEMENTATION (Learn from this!)
+│   └── backend/
+│       ├── database.py              ✅ MongoDB connection - Study pattern!
+│       ├── models.py                ✅ User/Project/Molecule models - Study this!
+│       └── routers/
+│           ├── projects.py          ✅ Project CRUD operations
+│           ├── molecules.py         ✅ Molecule CRUD operations
+│           └── jobs.py              ✅ Background job tracking
+│
+├── web/
+│   └── index.html                   (188KB - Frontend, currently stateless)
+│
+└── README.md                        (Main documentation)
+
+
+🔍 EXISTING DATABASE CODE TO LEARN FROM
+========================================
+Smart-Chem has MongoDB implementation - you'll adapt this to PostgreSQL:
+
+1. **Smart-Chem/backend/database.py**:
+   ✓ Database client setup
+   ✓ Connection management
+   → You'll create similar but for PostgreSQL
+
+2. **Smart-Chem/backend/models.py**:
+   ✓ UserDB - User model
+   ✓ ProjectDB - Project with user_id, name, description
+   ✓ MoleculeDB - Molecule with properties, ADMET, tags
+   ✓ JobDB - Background job tracking
+   → You'll adapt these to SQLAlchemy models
+
+3. **Smart-Chem/backend/routers/projects.py**:
+   ✓ Create project, list projects, get project by ID
+   → Learn the CRUD pattern
+
+4. **Smart-Chem/backend/routers/molecules.py**:
+   ✓ Add molecule to project, list molecules, search by SMILES
+   → Learn how they structure queries
+
+
+🎯 WHAT YOU NEED TO BUILD
+==========================
+Create in /orchestrator/database/ directory:
+
+1. **database/__init__.py** - Package initialization
+2. **database/models.py** - SQLAlchemy ORM models
+3. **database/connection.py** - Database engine & session
+4. **database/repositories/** - Data access layer
+   ├── user_repository.py
+   ├── project_repository.py
+   ├── molecule_repository.py
+   └── prediction_repository.py
+5. **database/migrations/** - Alembic migrations (auto-generated)
+
+Docker Setup:
+6. **docker-compose.yml** - PostgreSQL + Redis containers
+
+Integration:
+7. Update **/orchestrator/main.py** - Add database startup/shutdown
+8. Update **/orchestrator/requirements.txt** - Add database dependencies
+
+
+📊 DATABASE SCHEMA TO IMPLEMENT
+================================
+
+Table: users
+------------
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    hashed_password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255),
+    institution VARCHAR(255),
+    tier VARCHAR(20) DEFAULT 'free',
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_tier ON users(tier);
+
+Table: projects
+---------------
+CREATE TABLE projects (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    disease_target VARCHAR(255),  -- e.g., "Alzheimer's", "Cancer"
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX idx_projects_user ON projects(user_id);
+CREATE INDEX idx_projects_created ON projects(created_at DESC);
+
+Table: molecules
+----------------
+CREATE TABLE molecules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    smiles VARCHAR(500) NOT NULL,  -- ⚠️ INDEXED for fast lookup
+    name VARCHAR(255),
+    generation_method VARCHAR(100),  -- 'MolGAN', 'manual', 'imported'
+
+    -- Cached molecular properties (calculated on insert)
+    molecular_weight FLOAT,
+    logp FLOAT,
+    tpsa FLOAT,
+    qed FLOAT,
+    num_hbd INTEGER,
+    num_hba INTEGER,
+    num_rotatable_bonds INTEGER,
+
+    created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX idx_molecules_project ON molecules(project_id, created_at DESC);
+CREATE INDEX idx_molecules_smiles ON molecules USING hash(smiles);  -- Fast lookup
+CREATE INDEX idx_molecules_user ON molecules(user_id);
+
+Table: admet_predictions
+-------------------------
+CREATE TABLE admet_predictions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    molecule_id UUID NOT NULL REFERENCES molecules(id) ON DELETE CASCADE,
+    prediction_type VARCHAR(50) NOT NULL,  -- 'absorption', 'distribution', 'toxicity'
+    results JSONB NOT NULL,  -- Flexible schema for different prediction types
+    confidence_score FLOAT,
+    model_version VARCHAR(50),  -- Track which model version was used
+    created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX idx_predictions_molecule ON admet_predictions(molecule_id, created_at DESC);
+CREATE INDEX idx_predictions_type ON admet_predictions(prediction_type);
+
+Table: protein_structures
+--------------------------
+CREATE TABLE protein_structures (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sequence TEXT NOT NULL,  -- Amino acid sequence
+    pdb_id VARCHAR(10),  -- e.g., "1R42" if from RCSB
+    pdb_file_s3_key VARCHAR(500),  -- S3 path (don't store 500KB PDB in DB!)
+    structure_method VARCHAR(50),  -- 'ESMFold', 'RCSB', 'AlphaFold'
+    created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX idx_proteins_project ON protein_structures(project_id);
+CREATE INDEX idx_proteins_pdb_id ON protein_structures(pdb_id);
+
+Table: docking_results
+----------------------
+CREATE TABLE docking_results (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    molecule_id UUID NOT NULL REFERENCES molecules(id) ON DELETE CASCADE,
+    protein_id UUID NOT NULL REFERENCES protein_structures(id) ON DELETE CASCADE,
+    binding_affinity FLOAT,  -- kcal/mol
+    binding_pose_s3_key VARCHAR(500),  -- 3D coordinates in S3
+    interactions JSONB,  -- H-bonds, hydrophobic contacts, etc.
+    created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX idx_docking_molecule ON docking_results(molecule_id);
+CREATE INDEX idx_docking_protein ON docking_results(protein_id);
+CREATE INDEX idx_docking_affinity ON docking_results(binding_affinity);
+
+Table: activity_logs
+--------------------
+CREATE TABLE activity_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    action VARCHAR(100) NOT NULL,  -- 'generated_molecules', 'ran_docking', etc.
+    details JSONB,  -- Action-specific details
+    created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX idx_logs_user ON activity_logs(user_id, created_at DESC);
+CREATE INDEX idx_logs_action ON activity_logs(action);
+
+
+💾 SQLALCHEMY MODELS EXAMPLE
+=============================
+Create in /orchestrator/database/models.py:
+
+from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+import uuid
+from datetime import datetime
+
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    username = Column(String(100), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    full_name = Column(String(255))
+    institution = Column(String(255))
+    tier = Column(String(20), default='free', index=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
+    molecules = relationship("Molecule", back_populates="user", cascade="all, delete-orphan")
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(Text)
+    disease_target = Column(String(255))
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="projects")
+    molecules = relationship("Molecule", back_populates="project", cascade="all, delete-orphan")
+
+class Molecule(Base):
+    __tablename__ = "molecules"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey('projects.id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    smiles = Column(String(500), nullable=False, index=True)  # Hash index for fast lookup
+    name = Column(String(255))
+    generation_method = Column(String(100))
+
+    # Cached properties
+    molecular_weight = Column(Float)
+    logp = Column(Float)
+    tpsa = Column(Float)
+    qed = Column(Float)
+
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # Relationships
+    user = relationship("User", back_populates="molecules")
+    project = relationship("Project", back_populates="molecules")
+    predictions = relationship("ADMETPrediction", back_populates="molecule", cascade="all, delete-orphan")
+
+
+🏗️ REPOSITORY PATTERN (Clean Data Access)
+==========================================
+Create in /orchestrator/database/repositories/molecule_repository.py:
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_
+from typing import List, Optional
+from ..models import Molecule
+import uuid
+
+class MoleculeRepository:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def create(self, molecule_data: dict) -> Molecule:
+        """Create new molecule with auto-calculated properties"""
+        from rdkit import Chem
+        from rdkit.Chem import Descriptors
+
+        # Calculate properties from SMILES
+        mol = Chem.MolFromSmiles(molecule_data['smiles'])
+        if mol:
+            molecule_data['molecular_weight'] = Descriptors.MolWt(mol)
+            molecule_data['logp'] = Descriptors.MolLogP(mol)
+            molecule_data['tpsa'] = Descriptors.TPSA(mol)
+
+        molecule = Molecule(**molecule_data)
+        self.session.add(molecule)
+        await self.session.commit()
+        await self.session.refresh(molecule)
+        return molecule
+
+    async def get_by_id(self, molecule_id: uuid.UUID) -> Optional[Molecule]:
+        """Get molecule by ID"""
+        result = await self.session.execute(
+            select(Molecule).where(Molecule.id == molecule_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_by_project(self, project_id: uuid.UUID) -> List[Molecule]:
+        """Get all molecules in a project"""
+        result = await self.session.execute(
+            select(Molecule)
+            .where(Molecule.project_id == project_id)
+            .order_by(Molecule.created_at.desc())
+        )
+        return result.scalars().all()
+
+    async def search_by_smiles(self, smiles: str) -> Optional[Molecule]:
+        """Fast SMILES lookup (uses hash index)"""
+        result = await self.session.execute(
+            select(Molecule).where(Molecule.smiles == smiles)
+        )
+        return result.scalar_one_or_none()
+
+    async def delete(self, molecule_id: uuid.UUID) -> bool:
+        """Delete molecule"""
+        molecule = await self.get_by_id(molecule_id)
+        if molecule:
+            await self.session.delete(molecule)
+            await self.session.commit()
+            return True
+        return False
+
+
+🐳 DOCKER SETUP
+===============
+Create /orchestrator/docker-compose.yml:
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ultrathink_postgres
+    environment:
+      POSTGRES_USER: ultrathink
+      POSTGRES_PASSWORD: dev_password_change_in_prod
+      POSTGRES_DB: ultrathink_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ultrathink"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ultrathink_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  postgres_data:
+  redis_data:
+
+
+📦 DEPENDENCIES TO ADD
+======================
+Add to /orchestrator/requirements.txt:
+
+sqlalchemy[asyncio]>=2.0.23        # ORM
+asyncpg>=0.29.0                    # PostgreSQL async driver
+alembic>=1.13.0                    # Database migrations
+redis>=5.0.0                       # Caching
+pydantic-settings>=2.1.0           # Settings management
+
+
+🔧 DATABASE MIGRATION SETUP
+============================
+Initialize Alembic:
+
+cd /orchestrator
+alembic init alembic
+
+Edit alembic/env.py to import your models:
+
+from database.models import Base
+target_metadata = Base.metadata
+
+Create first migration:
+
+alembic revision --autogenerate -m "Initial schema"
+alembic upgrade head
+
+
+🧪 TESTING CHECKLIST
+====================
+Create /orchestrator/tests/test_database.py:
+
+✓ Create project → verify in DB
+✓ Add 100 molecules → query by project → verify count
+✓ Search molecule by SMILES → verify fast lookup (< 10ms)
+✓ Add duplicate SMILES → handle gracefully
+✓ Delete project → cascade delete molecules → verify
+✓ Add prediction → retrieve → verify JSONB structure
+✓ Concurrent writes → verify no race conditions
+✓ Database migration → rollback → verify data integrity
+
+
+🚀 PERFORMANCE OPTIMIZATIONS
+=============================
+1. **Indexes** (already in schema above):
+   - Hash index on SMILES for O(1) lookup
+   - B-tree indexes on foreign keys
+   - Composite indexes on (user_id, created_at) for pagination
+
+2. **Redis Caching**:
+   - Cache SMILES lookups (15 min TTL)
+   - Cache ADMET predictions (same molecule = same result)
+   - Cache user project lists
+
+3. **S3 for Large Files**:
+   - PDB files (500KB+) → S3
+   - Docking poses → S3
+   - Only store S3 keys in database
+
+4. **Connection Pooling**:
+   - Max 20 connections
+   - Pool pre-ping for stale connections
+
+
+🔗 INTEGRATION WITH ORCHESTRATOR
+=================================
+Update /orchestrator/main.py:
+
+from fastapi import FastAPI, Depends
+from database.connection import get_db, engine
+from database.models import Base
+from database.repositories.molecule_repository import MoleculeRepository
+
+app = FastAPI()
+
+@app.on_event("startup")
+async def startup():
+    # Create tables
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+@app.on_event("shutdown")
+async def shutdown():
+    await engine.dispose()
+
+@app.post("/molecules")
+async def create_molecule(data: dict, db: AsyncSession = Depends(get_db)):
+    repo = MoleculeRepository(db)
+    molecule = await repo.create(data)
+    return molecule
+
+
+🎓 RESEARCH TASKS
+=================
+1. Clone and study:
+   git clone https://github.com/tiangolo/full-stack-fastapi-postgresql
+   → Study backend/app/models/ folder
+   → Study backend/app/db/session.py
+
+2. Search online:
+   - "PostgreSQL indexing strategies for scientific data"
+   - "SQLAlchemy async best practices 2026"
+   - "PubChem database architecture"
+
+3. Study chemical databases:
+   - How PubChem stores 100M+ compounds
+   - How ChEMBL indexes SMILES strings
+   - Clone: git clone https://github.com/chembl/chembl_structure_pipeline
+
+
+🚀 WHEN YOU'RE DONE - MAKE IT BETTER!
+======================================
+1. **Full-Text Search**: PostgreSQL tsvector for molecule names
+2. **Time-Travel Queries**: Track molecule versions, undo changes
+3. **Data Export**: CSV, JSON, Parquet export for entire projects
+4. **Database Replication**: Read replicas for analytics
+5. **Automated Backups**: Daily backups to S3 with 30-day retention
+6. **Materialized Views**: Pre-compute expensive aggregations
+
+
+📊 DELIVERABLES
+===============
+1. ✅ /orchestrator/database/ directory with all DB code
+2. ✅ /orchestrator/alembic/ with migrations
+3. ✅ Working repository classes with async support
+4. ✅ docker-compose.yml for local dev
+5. ✅ Test suite with 80%+ coverage
+6. ✅ Documentation: /orchestrator/DATABASE_README.md
+   - Schema diagram (use dbdiagram.io or Mermaid)
+   - Setup instructions
+   - Migration guide
+   - Performance tuning tips
+
+
+Good luck, Subagent 2! Build a database that scales! 💾

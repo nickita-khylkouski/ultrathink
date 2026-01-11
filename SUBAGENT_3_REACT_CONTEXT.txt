@@ -1,0 +1,562 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║               SUBAGENT 3: REACT/NEXT.JS FRONTEND MIGRATION                   ║
+║                         Context & Mission Brief                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🎯 YOUR MISSION
+===============
+Migrate the 188KB vanilla JavaScript frontend to modern React/Next.js with TypeScript,
+proper state management, component architecture, and production-ready UX.
+
+📁 CURRENT PROJECT STRUCTURE
+============================
+/Users/nickita/hackathon/
+├── web/                             ← CURRENT FRONTEND (YOUR MIGRATION SOURCE)
+│   ├── index.html                   (188KB - HUGE single file!)
+│   ├── favicon.svg                  (DNA helix icon)
+│   ├── presentation.html            (Demo presentation)
+│   ├── test-3dmol.html              (3D viewer test)
+│   └── server.py                    (Simple Python HTTP server)
+│
+├── orchestrator/                    ← BACKEND API (Your frontend calls this)
+│   ├── main.py                      (81KB - 29+ API endpoints)
+│   ├── esmfold_integration.py       (ESMFold protein prediction)
+│   └── molgan_integration.py        (MolGAN molecular generation)
+│
+├── Smart-Chem/                      ← REFERENCE (Has React frontend!)
+│   └── frontend/
+│       ├── index.html               ✅ Study their structure
+│       └── (Vite + React setup)
+│
+├── 3dmol-viewer/                    ← 3D Molecular Viewer Library
+├── molstar-viewer/                  ← Advanced 3D Viewer (Mol*)
+└── ngl-viewer/                      ← Alternative 3D Viewer (NGL)
+
+
+🔍 CURRENT VANILLA JS CODE TO MIGRATE
+======================================
+The /web/index.html file contains ALL the frontend code (188KB!):
+
+**Key Functions to Migrate**:
+1. runDiscovery() - POST /orchestrate/demo → display candidates
+2. predictProteinStructure() - POST /research/esmfold/predict → 3D viewer
+3. evolveWithMolGAN() - POST /research/molgan/generate → evolution
+4. displayCandidates() - Render molecule list
+5. showMolecule() - 3D molecule visualization
+6. downloadPDB() - File export
+7. validateProteinSequence() - Input validation
+8. validateSMILES() - SMILES validation
+9. setLoading() - Loading state management
+10. displayError() - Error handling UI
+
+**Current Features**:
+✓ Drug discovery workflow (target → generate molecules → ADMET analysis)
+✓ ESMFold protein structure prediction
+✓ MolGAN molecular evolution
+✓ 3D molecular visualization (3Dmol.js)
+✓ Property calculation (MW, LogP, TPSA, BBB, Toxicity)
+✓ Export (PDB, SMILES, CSV)
+✓ Keyboard shortcuts (Ctrl+D, Ctrl+K, Enter, Esc)
+✓ Input validation (protein sequences, SMILES)
+✓ Loading indicators & error handling
+
+
+🎯 WHAT YOU NEED TO BUILD
+==========================
+Create NEW React app in /frontend/ directory:
+
+/frontend/
+├── package.json                     # Dependencies
+├── tsconfig.json                    # TypeScript config
+├── next.config.js                   # Next.js config
+├── tailwind.config.js               # Tailwind CSS
+├── public/
+│   └── favicon.svg                  (Copy from /web/favicon.svg)
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx               # Root layout
+│   │   ├── page.tsx                 # Home page
+│   │   ├── dashboard/               # Dashboard route
+│   │   ├── discovery/               # Discovery workflow
+│   │   ├── evolution/               # MolGAN evolution
+│   │   └── analysis/                # ADMET analysis
+│   ├── components/
+│   │   ├── MoleculeViewer/
+│   │   │   ├── MoleculeViewer.tsx   # 3D viewer component
+│   │   │   └── index.ts
+│   │   ├── ProteinViewer/
+│   │   │   ├── ProteinViewer.tsx    # 3D protein viewer
+│   │   │   └── index.ts
+│   │   ├── CandidatesList/
+│   │   │   ├── CandidatesList.tsx   # Results table
+│   │   │   └── CandidatesTable.tsx  # TanStack Table
+│   │   ├── PropertiesPanel/
+│   │   │   ├── PropertiesPanel.tsx  # ADMET properties display
+│   │   │   └── PropertyCard.tsx
+│   │   ├── DiscoveryForm/
+│   │   │   ├── DiscoveryForm.tsx    # Discovery workflow form
+│   │   │   └── index.ts
+│   │   └── shared/
+│   │       ├── Button/
+│   │       ├── Input/
+│   │       ├── LoadingSpinner/
+│   │       ├── ErrorBoundary/
+│   │       └── KeyboardHint/
+│   ├── services/
+│   │   ├── api.ts                   # API client (calls orchestrator)
+│   │   ├── websocket.ts             # Real-time progress updates
+│   │   └── storage.ts               # Local storage utilities
+│   ├── store/
+│   │   ├── index.ts                 # Zustand store
+│   │   ├── useDiscoveryStore.ts     # Discovery state
+│   │   ├── useMoleculeStore.ts      # Molecule state
+│   │   └── useUserStore.ts          # User/auth state
+│   ├── utils/
+│   │   ├── validators.ts            # Input validation
+│   │   ├── formatters.ts            # Data formatting
+│   │   ├── exporters.ts             # File export utilities
+│   │   └── keyboard.ts              # Keyboard shortcuts
+│   ├── types/
+│   │   ├── api.ts                   # API response types
+│   │   ├── molecule.ts              # Molecule types
+│   │   └── protein.ts               # Protein types
+│   └── styles/
+│       └── globals.css              # Global styles
+
+
+📦 TECH STACK
+=============
+**Core**:
+- Next.js 14 (App Router, React Server Components)
+- TypeScript 5+ (Type safety)
+- React 18+ (Concurrent features)
+
+**UI**:
+- Tailwind CSS (Utility-first styling)
+- shadcn/ui (Component library)
+- Radix UI (Headless components)
+- Lucide Icons (Icon library)
+
+**State Management**:
+- Zustand (Lightweight, simple)
+- OR Redux Toolkit (if you prefer Redux)
+
+**Forms & Validation**:
+- React Hook Form (Form state management)
+- Zod (Schema validation)
+
+**Data Tables**:
+- TanStack Table v8 (Powerful data grids)
+
+**3D Visualization**:
+- 3Dmol.js (Current viewer, easy to integrate)
+- OR Mol* (More advanced, better performance)
+- OR NGL Viewer (Alternative)
+
+**HTTP Client**:
+- Axios or native fetch with TypeScript
+
+
+📋 PACKAGE.JSON DEPENDENCIES
+=============================
+{
+  "name": "ultrathink-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^14.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "typescript": "^5.3.3",
+    "@types/react": "^18.2.45",
+    "@types/node": "^20.10.5",
+
+    "zustand": "^4.4.7",
+    "react-hook-form": "^7.49.2",
+    "zod": "^3.22.4",
+    "@hookform/resolvers": "^3.3.3",
+
+    "@tanstack/react-table": "^8.11.0",
+
+    "axios": "^1.6.2",
+
+    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "lucide-react": "^0.294.0",
+
+    "3dmol": "^2.0.4"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.0.4"
+  }
+}
+
+
+🏗️ MIGRATION STRATEGY
+======================
+
+**Phase 1: Project Setup**
+1. Initialize Next.js project: npx create-next-app@latest frontend --typescript --tailwind --app
+2. Install dependencies
+3. Copy favicon.svg to public/
+4. Set up Tailwind config
+
+**Phase 2: API Integration**
+Create /src/services/api.ts:
+
+import axios from 'axios';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7001';
+
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+export const api = {
+  // Discovery
+  runDiscovery: async (params: DiscoveryParams) => {
+    const response = await apiClient.post('/orchestrate/demo', params);
+    return response.data;
+  },
+
+  // ESMFold
+  predictStructure: async (sequence: string, proteinName: string) => {
+    const response = await apiClient.post('/research/esmfold/predict', {
+      sequence,
+      protein_name: proteinName,
+    });
+    return response.data;
+  },
+
+  // MolGAN
+  evolveMolecules: async (parentSmiles: string) => {
+    const response = await apiClient.post('/research/molgan/generate', {
+      parent_smiles: parentSmiles,
+      num_variants: 50,
+    });
+    return response.data;
+  },
+
+  // Health check
+  healthCheck: async () => {
+    const response = await apiClient.get('/health');
+    return response.data;
+  },
+};
+
+**Phase 3: State Management**
+Create /src/store/useDiscoveryStore.ts:
+
+import { create } from 'zustand';
+
+interface Candidate {
+  rank: number;
+  smiles: string;
+  properties: {
+    mw: number;
+    logp: number;
+    tpsa: number;
+    qed: number;
+  };
+}
+
+interface DiscoveryState {
+  candidates: Candidate[];
+  isLoading: boolean;
+  error: string | null;
+
+  runDiscovery: (target: string, numMolecules: number) => Promise<void>;
+  clearCandidates: () => void;
+}
+
+export const useDiscoveryStore = create<DiscoveryState>((set) => ({
+  candidates: [],
+  isLoading: false,
+  error: null,
+
+  runDiscovery: async (target, numMolecules) => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await api.runDiscovery({ target_name: target, num_molecules: numMolecules });
+      set({ candidates: data.top_candidates, isLoading: false });
+    } catch (error) {
+      set({ error: error.message, isLoading: false });
+    }
+  },
+
+  clearCandidates: () => set({ candidates: [] }),
+}));
+
+**Phase 4: Component Migration**
+Create /src/components/DiscoveryForm/DiscoveryForm.tsx:
+
+'use client';
+
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useDiscoveryStore } from '@/store/useDiscoveryStore';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+const schema = z.object({
+  target: z.string().min(1, 'Target is required'),
+  numMolecules: z.number().min(1).max(100),
+});
+
+type FormData = z.infer<typeof schema>;
+
+export function DiscoveryForm() {
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      target: 'Cancer',
+      numMolecules: 50,
+    },
+  });
+
+  const { runDiscovery, isLoading } = useDiscoveryStore();
+
+  const onSubmit = async (data: FormData) => {
+    await runDiscovery(data.target, data.numMolecules);
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium">Disease Target</label>
+        <Input
+          {...register('target')}
+          placeholder="e.g., Cancer, Alzheimer's"
+          className="mt-1"
+        />
+        {errors.target && <p className="text-red-500 text-sm">{errors.target.message}</p>}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium">Number of Molecules</label>
+        <Input
+          type="number"
+          {...register('numMolecules', { valueAsNumber: true })}
+          className="mt-1"
+        />
+      </div>
+
+      <Button type="submit" disabled={isLoading}>
+        {isLoading ? 'Discovering...' : 'Discover'}
+      </Button>
+    </form>
+  );
+}
+
+**Phase 5: 3D Viewer Integration**
+Create /src/components/MoleculeViewer/MoleculeViewer.tsx:
+
+'use client';
+
+import { useEffect, useRef } from 'react';
+
+// Type definitions for 3Dmol
+declare global {
+  interface Window {
+    $3Dmol: any;
+  }
+}
+
+interface MoleculeViewerProps {
+  smiles: string;
+  width?: number;
+  height?: number;
+}
+
+export function MoleculeViewer({ smiles, width = 400, height = 400 }: MoleculeViewerProps) {
+  const viewerRef = useRef<HTMLDivElement>(null);
+  const viewerInstance = useRef<any>(null);
+
+  useEffect(() => {
+    if (!viewerRef.current || !window.$3Dmol) return;
+
+    // Initialize viewer
+    viewerInstance.current = window.$3Dmol.createViewer(viewerRef.current, {
+      backgroundColor: 'black',
+    });
+
+    // Render molecule from SMILES
+    window.$3Dmol.parseSMILES(smiles, (mol: any) => {
+      viewerInstance.current.addModel(mol, 'smi');
+      viewerInstance.current.setStyle({}, { stick: {} });
+      viewerInstance.current.zoomTo();
+      viewerInstance.current.render();
+    });
+
+    return () => {
+      if (viewerInstance.current) {
+        viewerInstance.current.clear();
+      }
+    };
+  }, [smiles]);
+
+  return <div ref={viewerRef} style={{ width, height }} />;
+}
+
+
+🎨 DESIGN SYSTEM (shadcn/ui)
+============================
+Initialize shadcn/ui:
+
+npx shadcn-ui@latest init
+
+Add components:
+
+npx shadcn-ui@latest add button
+npx shadcn-ui@latest add input
+npx shadcn-ui@latest add table
+npx shadcn-ui@latest add dialog
+npx shadcn-ui@latest add tabs
+npx shadcn-ui@latest add card
+
+
+⌨️ KEYBOARD SHORTCUTS
+======================
+Create /src/utils/keyboard.ts:
+
+import { useEffect } from 'react';
+
+export function useKeyboardShortcut(key: string, callback: () => void, ctrlKey = false) {
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === key && (!ctrlKey || event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        callback();
+      }
+    };
+
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [key, callback, ctrlKey]);
+}
+
+Usage in component:
+
+import { useKeyboardShortcut } from '@/utils/keyboard';
+
+export function MyComponent() {
+  const downloadPDB = () => { /* ... */ };
+
+  useKeyboardShortcut('d', downloadPDB, true); // Ctrl+D
+
+  return <div>...</div>;
+}
+
+
+🧪 TESTING CHECKLIST
+====================
+✓ All API endpoints work (discovery, ESMFold, MolGAN)
+✓ 3D molecule viewer renders correctly
+✓ Form validation works (protein sequences, SMILES)
+✓ Loading states display during API calls
+✓ Error messages show helpful troubleshooting
+✓ Keyboard shortcuts functional (Ctrl+D, Ctrl+K, Enter, Esc)
+✓ Export functionality (PDB, SMILES, CSV)
+✓ Responsive design (mobile, tablet, desktop)
+✓ Dark mode (if implemented)
+✓ Lighthouse score > 90
+
+
+🎓 RESEARCH TASKS
+=================
+1. Clone and study:
+   git clone https://github.com/vercel/next.js/tree/canary/examples/with-typescript
+   git clone https://github.com/shadcn/ui
+   → Study component patterns
+
+2. Search GitHub:
+   - "molecular visualization React" → Study integrations
+   - "scientific web app Next.js" → Learn patterns
+   - "3Dmol.js React integration" → Integration examples
+
+3. Clone 3D viewers:
+   git clone https://github.com/molstar/molstar
+   → Study their React integration
+
+4. Search online:
+   - "Next.js 14 App Router best practices 2026"
+   - "Zustand vs Redux Toolkit comparison"
+   - "React Hook Form with Zod validation"
+
+
+🚀 WHEN YOU'RE DONE - MAKE IT BETTER!
+======================================
+1. **Dark Mode**: Next-themes integration
+2. **Mobile Responsive**: Works on phones/tablets
+3. **PWA**: Offline support with service workers
+4. **Advanced Visualization**: D3.js for chemical space maps
+5. **Workflow Builder**: Drag-and-drop pipeline editor
+6. **Real-time Collaboration**: Y.js for multi-user editing
+7. **Accessibility**: WCAG 2.1 AA compliance
+8. **Performance**: Code splitting, lazy loading, image optimization
+
+
+📊 DELIVERABLES
+===============
+1. ✅ /frontend/ directory with complete Next.js app
+2. ✅ All features from vanilla JS migrated
+3. ✅ TypeScript types for all API responses
+4. ✅ Component library with shadcn/ui
+5. ✅ Documentation: /frontend/README.md
+   - Setup instructions
+   - Component documentation
+   - State management guide
+   - Deployment guide
+
+
+🎯 SUCCESS CRITERIA
+===================
+✓ npm run dev starts development server
+✓ All API calls work correctly
+✓ 3D viewers render molecules and proteins
+✓ Form validation prevents invalid inputs
+✓ Loading states and errors handled gracefully
+✓ Keyboard shortcuts work
+✓ Export functionality works
+✓ Production build succeeds (npm run build)
+✓ Lighthouse score > 90
+
+
+💡 MIGRATION TIPS
+=================
+1. Start with API integration - ensure backend works
+2. Migrate one component at a time (start with simplest)
+3. Copy validation logic exactly (validateProteinSequence, validateSMILES)
+4. Test each component before moving to next
+5. Use TypeScript strictly - no 'any' types
+6. Keep existing keyboard shortcuts (users expect them)
+7. Maintain existing color scheme (dark theme with cyan accents)
+
+
+🔗 HELPFUL LINKS
+=================
+- Next.js Docs: https://nextjs.org/docs
+- shadcn/ui: https://ui.shadcn.com/
+- Zustand: https://github.com/pmndrs/zustand
+- TanStack Table: https://tanstack.com/table/v8
+- 3Dmol.js: https://3dmol.csb.pitt.edu/
+
+
+Good luck, Subagent 3! Build a beautiful, fast React frontend! ⚛️

@@ -797,7 +797,8 @@ def rank_candidates(molecules: List[dict]) -> List[dict]:
 
 # ===== MAIN ORCHESTRATOR ENDPOINT =====
 @app.post("/orchestrate/discover", response_model=PipelineResult)
-async def discover_drugs(req: GenerationRequest):
+@limiter.limit("5/minute")  # Expensive: 3-stage pipeline (generate + dock + ADMET)
+async def discover_drugs(request: Request, req: GenerationRequest):
     """
     Full drug discovery pipeline:
     1. Generate novel molecules (Smart-Chem)
@@ -893,7 +894,8 @@ async def discover_drugs(req: GenerationRequest):
     return result
 
 @app.get("/status/smartchem")
-async def check_smartchem():
+@limiter.limit("20/minute")  # Lightweight: Health check
+async def check_smartchem(request: Request):
     """Check if Smart-Chem is running"""
     try:
         async with httpx.AsyncClient() as client:
@@ -903,7 +905,8 @@ async def check_smartchem():
         return {"status": "offline", "port": 8000}
 
 @app.get("/status/bionemo")
-async def check_bionemo():
+@limiter.limit("20/minute")  # Lightweight: Health check
+async def check_bionemo(request: Request):
     """Check if BioNeMo is running"""
     try:
         async with httpx.AsyncClient() as client:
@@ -1076,7 +1079,8 @@ def demo_discovery(request: Request, req: GenerationRequest):
     return result
 
 @app.get("/health")
-async def health():
+@limiter.limit("30/minute")  # Very lightweight: Health check endpoint
+async def health(request: Request):
     """Health check endpoint with database status"""
     db_ok = await check_db_connection()
 
@@ -1105,7 +1109,8 @@ async def health():
 # ===== NEW ENDPOINTS FOR GITHUB TOOLS =====
 
 @app.get("/tools")
-def list_tools():
+@limiter.limit("20/minute")  # Lightweight: Static tool information
+def list_tools(request: Request):
     """
     List all GitHub tools integrated into the pipeline.
     """
@@ -1147,7 +1152,8 @@ def list_tools():
     }
 
 @app.post("/tools/similarity")
-def analyze_similarity(smiles1: str, smiles2: str):
+@limiter.limit("10/minute")  # Moderate: Fingerprint calculations
+def analyze_similarity(request: Request, smiles1: str, smiles2: str):
     """
     Calculate similarity between two molecules using Morgan fingerprints.
     GitHub: rdkit/rdkit
@@ -1165,7 +1171,8 @@ def analyze_similarity(smiles1: str, smiles2: str):
         return {"error": str(e)}
 
 @app.post("/tools/analysis")
-def comprehensive_analysis(smiles: str):
+@limiter.limit("10/minute")  # Moderate: ADMET + SA calculations
+def comprehensive_analysis(request: Request, smiles: str):
     """
     Comprehensive molecular analysis with all GitHub tools.
     """
@@ -1194,7 +1201,8 @@ def comprehensive_analysis(smiles: str):
         return {"error": str(e)}
 
 @app.get("/tools/github-repos")
-def github_repositories():
+@limiter.limit("20/minute")  # Lightweight: Static repository list
+def github_repositories(request: Request):
     """
     Direct links to all GitHub repositories used in the pipeline.
     """
@@ -1262,7 +1270,8 @@ def github_repositories():
     }
 
 @app.post("/tools/3d-structure")
-def get_3d_structure(smiles: str):
+@limiter.limit("10/minute")  # Moderate: 3D coordinate generation
+def get_3d_structure(request: Request, smiles: str):
     """
     Generate 3D molecular structure from SMILES for 3Dmol.js visualization.
 
@@ -1295,7 +1304,8 @@ def get_3d_structure(smiles: str):
         return {"error": str(e), "smiles": smiles}
 
 @app.get("/tools/targets")
-def list_available_targets():
+@limiter.limit("20/minute")  # Lightweight: Static target database
+def list_available_targets(request: Request):
     """
     List all available disease/target types with their drug candidates.
     GitHub: DeepMol for target-specific selection
@@ -1315,7 +1325,8 @@ def list_available_targets():
 # ===== AI ANALYSIS ENDPOINTS (ChatGPT Integration) =====
 
 @app.post("/ai/drug-analysis")
-def analyze_drug_for_disease(smiles: str, disease: str, drug_name: str = ""):
+@limiter.limit("5/minute")  # OpenAI API costs money - limit usage
+def analyze_drug_for_disease(request: Request, smiles: str, disease: str, drug_name: str = ""):
     """
     Use ChatGPT to explain why a molecule works for a specific disease.
     Returns scientific reasoning about mechanism of action.
@@ -1359,7 +1370,8 @@ Be scientific but concise."""
 
 
 @app.post("/ai/risk-assessment")
-def assess_drug_risks(smiles: str, drug_name: str = "", descriptors: dict = None):
+@limiter.limit("5/minute")  # OpenAI API costs money - limit usage
+def assess_drug_risks(request: Request, smiles: str, drug_name: str = "", descriptors: dict = None):
     """
     Use ChatGPT to assess potential risks and side effects of a drug.
     """
@@ -1405,7 +1417,8 @@ Assess the following risks in 2-3 sentences:
 
 
 @app.post("/ai/synthesis-guide")
-def explain_synthesis_complexity(smiles: str, drug_name: str = "", sa_score: float = None):
+@limiter.limit("5/minute")  # OpenAI API costs money - limit usage
+def explain_synthesis_complexity(request: Request, smiles: str, drug_name: str = "", sa_score: float = None):
     """
     Use ChatGPT to explain how difficult/easy this drug is to synthesize.
     """
@@ -1454,7 +1467,8 @@ In 2-3 sentences, explain:
 
 
 @app.get("/ai/e2e-flow")
-def explain_e2e_flow():
+@limiter.limit("20/minute")  # Lightweight: Static documentation
+def explain_e2e_flow(request: Request):
     """
     Explain the complete end-to-end drug discovery flow.
     """
@@ -1521,7 +1535,8 @@ def explain_e2e_flow():
 # ===== SHAPETHESIAS EVOLUTIONARY ALGORITHM ENDPOINTS =====
 
 @app.post("/shapethesias/evolve")
-def shapethesias_evolve(parent_smiles: str, num_variants: int = 100, generation: int = 1):
+@limiter.limit("5/minute")  # Expensive: Generates and scores 100 molecular variants
+def shapethesias_evolve(request: Request, parent_smiles: str, num_variants: int = 100, generation: int = 1):
     """
     Shapethesias Evolutionary Algorithm:
     Generate 100 variants by mutating atoms at atomic level.
@@ -1570,7 +1585,8 @@ def shapethesias_evolve(parent_smiles: str, num_variants: int = 100, generation:
 
 
 @app.post("/shapethesias/continue-evolution")
-def shapethesias_continue(selected_smiles: str, generation: int = 2, num_variants: int = 100):
+@limiter.limit("5/minute")  # Expensive: Continues evolution with 100 new variants
+def shapethesias_continue(request: Request, selected_smiles: str, generation: int = 2, num_variants: int = 100):
     """
     Continue evolution with researcher-selected variant from previous generation.
 
@@ -1581,7 +1597,8 @@ def shapethesias_continue(selected_smiles: str, generation: int = 2, num_variant
 
 
 @app.get("/shapethesias/similar-projects")
-def shapethesias_similar_projects():
+@limiter.limit("20/minute")  # Lightweight: Static project list
+def shapethesias_similar_projects(request: Request):
     """
     Find GitHub projects doing similar evolutionary/iterative approaches.
     """
@@ -1645,7 +1662,8 @@ def shapethesias_similar_projects():
 
 
 @app.get("/shapethesias/e2e-flow")
-def shapethesias_e2e_explanation():
+@limiter.limit("20/minute")  # Lightweight: Static documentation
+def shapethesias_e2e_explanation(request: Request):
     """
     Explain the complete Shapethesias evolutionary process.
     """
@@ -1703,7 +1721,8 @@ def shapethesias_e2e_explanation():
 # ===== THESEUS MOLECULAR TRANSFORMATION ENDPOINTS =====
 
 @app.post("/theseus/transform")
-def theseus_transform_molecule(input_smiles: str, num_variants: int = 5, disease: str = ""):
+@limiter.limit("5/minute")  # Expensive: Generates and scores multiple molecular variants
+def theseus_transform_molecule(request: Request, input_smiles: str, num_variants: int = 5, disease: str = ""):
     """
     Ship of Theseus: Transform an existing drug into novel candidates.
 
@@ -1745,7 +1764,8 @@ def theseus_transform_molecule(input_smiles: str, num_variants: int = 5, disease
 
 
 @app.post("/theseus/analyze-novelty")
-def analyze_novelty_with_gpt4(original_smiles: str, mutated_smiles: str, mutations: List[str], disease: str = ""):
+@limiter.limit("5/minute")  # OpenAI API costs money - limit usage
+def analyze_novelty_with_gpt4(request: Request, original_smiles: str, mutated_smiles: str, mutations: List[str], disease: str = ""):
     """
     Use GPT-4 (extended context) to analyze:
     1. How novel is this mutated molecule?
@@ -1796,7 +1816,8 @@ Keep it under 300 words but be precise."""
 
 
 @app.get("/theseus/similar-projects")
-def get_similar_github_projects():
+@limiter.limit("20/minute")  # Lightweight: Static project list
+def get_similar_github_projects(request: Request):
     """
     Find GitHub projects that do similar Theseus-like transformations.
     Projects that mutate/transform existing things.
@@ -1861,7 +1882,8 @@ def get_similar_github_projects():
 
 
 @app.get("/theseus/e2e-explanation")
-def theseus_e2e_explanation():
+@limiter.limit("20/minute")  # Lightweight: Static documentation
+def theseus_e2e_explanation(request: Request):
     """
     Explain the Theseus drug discovery process end-to-end.
     """
@@ -1926,7 +1948,8 @@ def theseus_e2e_explanation():
 # ===== DRUG OPTIMIZERS & DATABASES =====
 
 @app.get("/optimizers/projects")
-def get_drug_optimizer_projects():
+@limiter.limit("20/minute")  # Lightweight: Static optimizer list
+def get_drug_optimizer_projects(request: Request):
     """
     Find GitHub projects for drug optimization, ADMET prediction,
     molecular calculations, and database integration.
@@ -1991,7 +2014,8 @@ def get_drug_optimizer_projects():
 
 
 @app.get("/databases/available")
-def get_drug_databases():
+@limiter.limit("20/minute")  # Lightweight: Static database list
+def get_drug_databases(request: Request):
     """
     List available chemical and drug databases with hard values.
     """
@@ -2054,7 +2078,8 @@ def get_drug_databases():
 
 
 @app.post("/calculate/molecular-properties")
-def calculate_all_molecular_properties(smiles: str):
+@limiter.limit("10/minute")  # Moderate: Comprehensive RDKit calculations
+def calculate_all_molecular_properties(request: Request, smiles: str):
     """
     Calculate ALL hard molecular values for a given molecule.
     Uses RDKit for rigorous calculations.
@@ -2107,7 +2132,8 @@ def calculate_all_molecular_properties(smiles: str):
 
 
 @app.post("/predict/efficacy-with-gpt")
-def predict_efficacy_with_gpt(smiles: str, disease: str, mechanism: str = ""):
+@limiter.limit("5/minute")  # OpenAI API costs money - limit usage
+def predict_efficacy_with_gpt(request: Request, smiles: str, disease: str, mechanism: str = ""):
     """
     Use GPT-4o (extended context, 128K tokens) to predict drug efficacy
     based on molecular structure, disease target, and mechanism.
@@ -2302,7 +2328,8 @@ def generate_with_molgan(request: Request, req: MolGANRequest):
 
 
 @app.get("/research/molgan/info")
-def molgan_info():
+@limiter.limit("20/minute")  # Lightweight: Static model information
+def molgan_info(request: Request):
     """Get metadata about MolGAN integration."""
     from molgan_integration import MolGANGenerator
 
@@ -2381,7 +2408,8 @@ def predict_protein_structure(request: Request, req: ESMFoldRequest):
 
 
 @app.get("/research/esmfold/info")
-def esmfold_info():
+@limiter.limit("20/minute")  # Lightweight: Static model information
+def esmfold_info(request: Request):
     """Get metadata about ESMFold integration."""
     from esmfold_integration import ESMFoldPredictor
 
@@ -2400,7 +2428,8 @@ def esmfold_info():
 
 
 @app.get("/research/esmfold/common-proteins")
-def get_common_proteins():
+@limiter.limit("20/minute")  # Lightweight: Static protein list
+def get_common_proteins(request: Request):
     """Get list of common proteins available in AlphaFold Database."""
     from esmfold_integration import ESMFoldPredictor
 
@@ -2412,7 +2441,8 @@ def get_common_proteins():
 
 
 @app.get("/research/models")
-def list_research_models():
+@limiter.limit("20/minute")  # Lightweight: Static model list
+def list_research_models(request: Request):
     """
     List all integrated research paper models.
     """
