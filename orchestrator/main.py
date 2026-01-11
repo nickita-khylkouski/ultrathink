@@ -2392,10 +2392,14 @@ def generate_with_molgan(request: Request, req: MolGANRequest):
     try:
         molgan = MolGANGenerator(use_mock=True)
 
-        # Generate variants
+        # Generate variants (request 5x more to account for ~20% success rate)
+        # Due to chemical validity filtering, we need more attempts
+        target_variants = req.num_variants
+        attempt_variants = max(target_variants * 5, 50)  # At least 50 attempts
+
         variants = molgan.generate_variants(
             req.parent_smiles,
-            num_variants=req.num_variants,
+            num_variants=attempt_variants,
             constraints=req.property_constraints
         )
 

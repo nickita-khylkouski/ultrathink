@@ -6,6 +6,7 @@ import { Button } from '@/components/shared/Button';
 import { Input } from '@/components/shared/Input';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { ErrorMessage } from '@/components/shared/ErrorMessage';
+import { AbstractLoader } from './AbstractLoader';
 import { useSearchCache } from '@/hooks/useSearchCache';
 import { BookOpen, ExternalLink, FileText, Database, Download } from 'lucide-react';
 
@@ -239,12 +240,7 @@ ${idx + 1}. ${article.title}
 
                 {/* Abstract (if toggled) */}
                 {showAbstracts.has(article.pmid) && (
-                  <div className="mt-3 p-3 bg-panel border-l-4 border-black">
-                    <p className="text-xs text-text-secondary italic">
-                      Abstract loading requires additional API call (not implemented in demo).
-                      Click "View on PubMed" to read the full abstract.
-                    </p>
-                  </div>
+                  <AbstractLoader pmid={article.pmid} />
                 )}
               </div>
             ))}
