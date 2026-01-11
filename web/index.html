@@ -968,6 +968,108 @@
             box.className = "status " + type;
         }
 
+        // ===== ERROR HANDLING HELPERS =====
+        function getHumanReadableError(error) {
+            // Network errors
+            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                return {
+                    title: "Connection Failed",
+                    message: "Unable to reach the backend server. Please check:",
+                    suggestions: [
+                        "✓ Is the backend running? (python3 orchestrator/main.py)",
+                        "✓ Is it on port 7001? (http://localhost:7001/health)",
+                        "✓ Check your internet connection",
+                        "✓ Try refreshing the page"
+                    ]
+                };
+            }
+
+            // Timeout errors
+            if (error.message.includes('timeout') || error.message.includes('aborted')) {
+                return {
+                    title: "Request Timeout",
+                    message: "The request took too long to complete. This might mean:",
+                    suggestions: [
+                        "✓ Backend is overloaded or slow",
+                        "✓ Complex calculation (try fewer molecules)",
+                        "✓ Network congestion",
+                        "✓ Try again in a moment"
+                    ]
+                };
+            }
+
+            // HTTP error codes
+            if (error.message.includes('500')) {
+                return {
+                    title: "Server Error (500)",
+                    message: "The backend encountered an internal error:",
+                    suggestions: [
+                        "✓ Check backend console for error logs",
+                        "✓ Restart the backend server",
+                        "✓ Report this issue if it persists"
+                    ]
+                };
+            }
+
+            if (error.message.includes('404')) {
+                return {
+                    title: "Endpoint Not Found (404)",
+                    message: "The requested API endpoint doesn't exist:",
+                    suggestions: [
+                        "✓ Backend may be outdated - update it",
+                        "✓ Wrong API URL in frontend config",
+                        "✓ Check backend routes are registered"
+                    ]
+                };
+            }
+
+            if (error.message.includes('400')) {
+                return {
+                    title: "Invalid Request (400)",
+                    message: "The request data was malformed:",
+                    suggestions: [
+                        "✓ Check your input values",
+                        "✓ SMILES format might be invalid",
+                        "✓ Protein sequence has invalid characters"
+                    ]
+                };
+            }
+
+            // Generic error
+            return {
+                title: "Unexpected Error",
+                message: error.message || "An unknown error occurred",
+                suggestions: [
+                    "✓ Check browser console (F12) for details",
+                    "✓ Try refreshing the page",
+                    "✓ Report this issue if it persists"
+                ]
+            };
+        }
+
+        function displayError(error, containerId) {
+            const errorInfo = getHumanReadableError(error);
+
+            let html = `<div class="error" style="padding: 15px; line-height: 1.6;">
+                <strong style="font-size: 13px; color: #ff4444;">❌ ${errorInfo.title}</strong><br><br>
+                <div style="color: #ff8888; margin: 10px 0;">${errorInfo.message}</div>`;
+
+            if (errorInfo.suggestions && errorInfo.suggestions.length > 0) {
+                html += `<div style="margin-top: 10px; font-size: 10px; color: #ffaa66;">
+                    <strong>💡 Troubleshooting:</strong><br>`;
+                errorInfo.suggestions.forEach(suggestion => {
+                    html += `${suggestion}<br>`;
+                });
+                html += `</div>`;
+            }
+
+            html += `<br><div style="font-size: 9px; color: #666; margin-top: 10px;">Technical: ${error.message}</div>
+            </div>`;
+
+            document.getElementById(containerId).innerHTML = html;
+            updateStatus(`❌ ${errorInfo.title}`, "error");
+        }
+
         // ===== LOADING STATE HELPERS =====
         function setLoading(buttonId, isLoading, loadingText = "Loading...") {
             const btn = document.getElementById(buttonId);
@@ -1056,12 +1158,19 @@
                     })
                 });
 
+                // Check for HTTP errors
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+                }
+
                 const data = await resp.json();
                 allCandidates = data.top_candidates || [];
                 displayCandidates(allCandidates);
                 updateStatus(`✅ Generated ${allCandidates.length} candidates for ${target}`, "healthy");
             } catch (e) {
-                updateStatus(`❌ Error: ${e.message}`, "error");
+                // Use enhanced error display
+                hideProgressBar("candidates-list");
+                displayError(e, "candidates-list");
             } finally {
                 // Clear loading state
                 setLoading("btn-discover", false);
@@ -2803,6 +2912,11 @@ Respond with: Legal status (NCE/not), Pharmacological novelty (0-100%), and reco
                     })
                 });
 
+                // Check for HTTP errors
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
                 const data = await response.json();
 
                 // Display results
@@ -2863,8 +2977,8 @@ Respond with: Legal status (NCE/not), Pharmacological novelty (0-100%), and reco
                     }
                 }
             } catch (error) {
-                document.getElementById("protein-info").innerHTML = `<div class="error">Prediction failed: ${error.message}</div>`;
-                updateStatus(`❌ ESMFold error: ${error.message}`, "error");
+                // Use enhanced error display
+                displayError(error, "protein-info");
             } finally {
                 // Clear loading state
                 setLoading("btn-predict-protein", false);
@@ -2959,11 +3073,15 @@ Respond with: Legal status (NCE/not), Pharmacological novelty (0-100%), and reco
                     })
                 });
 
+                // Check for HTTP errors
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
                 const data = await response.json();
 
                 if (data.error) {
-                    updateStatus(`❌ MolGAN error: ${data.error}`, "error");
-                    return;
+                    throw new Error(data.error);
                 }
 
                 evolutionState.generation = data.generation;
@@ -2998,8 +3116,8 @@ Respond with: Legal status (NCE/not), Pharmacological novelty (0-100%), and reco
                 updateStatus("✅ MolGAN generation complete (100% valid)", "healthy");
 
             } catch (error) {
-                document.getElementById("tools-output-s2").innerHTML = `<div class="error">MolGAN error: ${error.message}</div>`;
-                updateStatus(`❌ MolGAN failed: ${error.message}`, "error");
+                // Use enhanced error display
+                displayError(error, "tools-output-s2");
             } finally {
                 // Clear loading state
                 setLoading("btn-molgan", false);
