@@ -8,9 +8,10 @@ Unified pipeline with 5+ GitHub tools:
 5. Advanced toxicity & synthesis scoring
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.middleware.gzip import GZipMiddleware
+from pydantic import BaseModel, Field, conint, constr
 from typing import List, Optional, Dict, Tuple
 import httpx
 import asyncio
@@ -21,26 +22,94 @@ import os
 import random
 import copy
 from openai import OpenAI
+import logging
+import uuid
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# ===== LOGGING CONFIGURATION =====
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - [%(request_id)s] - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('orchestrator.log')
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+# Add request_id to all log records
+class RequestIdFilter(logging.Filter):
+    def filter(self, record):
+        record.request_id = getattr(record, 'request_id', 'N/A')
+        return True
+
+logger.addFilter(RequestIdFilter())
 
 try:
     from rdkit import Chem
     from rdkit.Chem import AllChem, Descriptors, Crippen
 except ImportError:
     Chem = None
+    logger.warning("RDKit not available - some features will be limited")
+
+# ===== RATE LIMITING SETUP =====
+limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title="🧬 Drug Discovery Orchestrator",
     description="Unified pipeline combining Smart-Chem, BioNeMo, and EBNA1",
-    version="1.0.0"
+    version="2.0.0"
 )
+
+# Add rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ===== MIDDLEWARE STACK =====
+
+# 1. Request ID middleware (for tracing)
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+
+    # Log request
+    logger.info(f"Incoming request: {request.method} {request.url.path}", extra={'request_id': request_id})
+
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+
+    # Log response
+    logger.info(f"Response status: {response.status_code}", extra={'request_id': request_id})
+
+    return response
+
+# 2. CORS Configuration (Secure - only allow specific origins)
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:8000,http://localhost:5173,http://127.0.0.1:3000"
+).split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,  # ✅ Fixed: No longer allows all origins
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
+
+# 3. Response Compression (GZip)
+app.add_middleware(GZipMiddleware, minimum_size=1000)  # Compress responses > 1KB
+
+logger.info(f"CORS allowed origins: {ALLOWED_ORIGINS}")
 
 # ===== OPENAI CONFIG (Using best available GPT with extended context) =====
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -780,12 +849,16 @@ async def check_bionemo():
         return {"status": "offline", "port": 5000}
 
 @app.post("/orchestrate/demo")
-def demo_discovery(req: GenerationRequest):
+@limiter.limit("10/minute")  # Rate limit: 10 requests per minute
+def demo_discovery(request: Request, req: GenerationRequest):
     """
     Demo endpoint - works WITHOUT Smart-Chem
     Uses target-specific drug candidates optimized for the disease/target
     GitHub: DeepMol (BioSystemsUM/DeepMol) for molecule selection
+
+    Rate Limited: 10 requests/minute to prevent abuse
     """
+    logger.info(f"Demo Discovery for {req.target_name}", extra={'request_id': request.state.request_id})
     print(f"🧪 Demo Discovery for {req.target_name}...")
 
     # Select target-specific molecules
@@ -2037,24 +2110,46 @@ Provide specific, evidence-based predictions."""
 # ===== REQUEST MODELS FOR RESEARCH ENDPOINTS =====
 
 class MolGANRequest(BaseModel):
-    parent_smiles: str
-    num_variants: int = 100
-    generation: int = 1
-    property_constraints: Optional[Dict] = None
+    parent_smiles: constr(min_length=1, max_length=500) = Field(
+        ...,
+        description="Parent molecule SMILES string",
+        example="CCO"
+    )
+    num_variants: conint(ge=1, le=200) = Field(
+        default=100,
+        description="Number of variants to generate (max 200)"
+    )
+    generation: conint(ge=1, le=10) = Field(
+        default=1,
+        description="Generation number (max 10)"
+    )
+    property_constraints: Optional[Dict] = Field(
+        default=None,
+        description="Property constraints for generated molecules"
+    )
 
 class ESMFoldRequest(BaseModel):
-    sequence: str
-    protein_name: str = ""
+    sequence: constr(min_length=3, max_length=2000) = Field(
+        ...,
+        description="Protein amino acid sequence (3-2000 residues)",
+        example="ACDEFGHIKLMNPQRSTVWY"
+    )
+    protein_name: constr(max_length=100) = Field(
+        default="",
+        description="Optional protein name"
+    )
 
 
 # ===== MOLGAN INTEGRATION (Research Paper Model) =====
 
 @app.post("/research/molgan/generate")
-def generate_with_molgan(req: MolGANRequest):
+@limiter.limit("5/minute")  # Rate limit: 5 requests per minute (expensive operation)
+def generate_with_molgan(request: Request, req: MolGANRequest):
     """
     Generate molecular variants using MolGAN.
 
     Research integration: MolGAN - Molecular Generative Adversarial Network
+    Rate Limited: 5 requests/minute (computationally expensive)
     Paper: "MolGAN: An implicit generative model for small molecular graphs"
     Authors: De Cao & Kipf (DeepMind)
     GitHub: https://github.com/nicola-decao/MolGAN
@@ -2066,6 +2161,11 @@ def generate_with_molgan(req: MolGANRequest):
     - Semantic understanding of chemical space
     """
     from molgan_integration import MolGANGenerator
+
+    logger.info(
+        f"MolGAN generation request: {req.num_variants} variants from {req.parent_smiles[:20]}...",
+        extra={'request_id': request.state.request_id}
+    )
 
     try:
         molgan = MolGANGenerator(use_mock=True)
@@ -2125,6 +2225,11 @@ def generate_with_molgan(req: MolGANRequest):
         }
 
     except Exception as e:
+        logger.error(
+            f"MolGAN generation failed: {str(e)}",
+            extra={'request_id': request.state.request_id},
+            exc_info=True
+        )
         return {"error": str(e), "method": "MolGAN"}
 
 
@@ -2150,9 +2255,11 @@ def molgan_info():
 # ===== ESMFOLD INTEGRATION (Research Paper Model) =====
 
 @app.post("/research/esmfold/predict")
-def predict_protein_structure(req: ESMFoldRequest):
+@limiter.limit("3/minute")  # Rate limit: 3 requests per minute (very expensive operation)
+def predict_protein_structure(request: Request, req: ESMFoldRequest):
     """
     Predict protein 3D structure from amino acid sequence using ESMFold.
+    Rate Limited: 3 requests/minute (computationally very expensive)
 
     Research integration: ESMFold - Fast Protein Structure Prediction
     Paper: "Language models of protein sequences at the edge of structure prediction"
@@ -2171,6 +2278,11 @@ def predict_protein_structure(req: ESMFoldRequest):
     3. Create mock structure (demo mode)
     """
     from esmfold_integration import ESMFoldPredictor
+
+    logger.info(
+        f"ESMFold prediction request: {req.protein_name or 'Unknown'} ({len(req.sequence)} residues)",
+        extra={'request_id': request.state.request_id}
+    )
 
     try:
         predictor = ESMFoldPredictor(use_api_fallback=True)
@@ -2192,6 +2304,11 @@ def predict_protein_structure(req: ESMFoldRequest):
         return result
 
     except Exception as e:
+        logger.error(
+            f"ESMFold prediction failed: {str(e)}",
+            extra={'request_id': request.state.request_id},
+            exc_info=True
+        )
         return {"error": str(e), "method": "ESMFold"}
 
 
