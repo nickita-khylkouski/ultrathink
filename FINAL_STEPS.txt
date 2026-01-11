@@ -1,0 +1,258 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║                      ✅ EVERYTHING IS READY ✅                            ║
+║                                                                            ║
+║              Drug Discovery Orchestrator - Final Setup Guide               ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+YOU HAVE BUILT
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ 3 Drug Discovery Projects (cloned & integrated)
+✅ Orchestrator API with 3-stage pipeline
+✅ Web UI with buttons and real-time results
+✅ Startup scripts for everything
+✅ Complete documentation
+
+═══════════════════════════════════════════════════════════════════════════════
+🚀 STEP 1: OPEN A TERMINAL AND RUN THIS
+═══════════════════════════════════════════════════════════════════════════════
+
+cd ~/hackathon
+./SIMPLE_START.sh
+
+You will see:
+  🧹 Cleaning up old processes...
+  📦 Installing dependencies...
+  🚀 Starting services in background...
+  [1] Starting Orchestrator on port 7000... PID: xxxx
+  [2] Starting Smart-Chem on port 8000... PID: xxxx
+  [3] Starting BioNeMo on port 5000... PID: xxxx
+  [4] Starting Web UI on port 3000... PID: xxxx
+  ⏳ Waiting for services to start...
+  ✅ CHECKING SERVICES...
+     ✅ Orchestrator is running on port 7000
+     ✅ Smart-Chem is running on port 8000
+     ✅ BioNeMo is running on port 5000
+     ✅ Web UI is running on port 3000
+
+DON'T CLOSE THIS TERMINAL! Keep it open while you test.
+
+═══════════════════════════════════════════════════════════════════════════════
+🌐 STEP 2: OPEN BROWSER
+═══════════════════════════════════════════════════════════════════════════════
+
+Go to: http://localhost:3000
+
+You will see a terminal-style interface with:
+  - Input fields for target, molecules, QED, LogP, SAS
+  - 4 buttons: RUN DISCOVERY, CHECK HEALTH, SMART-CHEM, BIONEMO
+  - Results panel on left
+  - JSON panel on right
+
+═══════════════════════════════════════════════════════════════════════════════
+🧪 STEP 3: TEST THE SYSTEM
+═══════════════════════════════════════════════════════════════════════════════
+
+Option A - Quick Test (2 minutes):
+  1. Click: 💓 CHECK HEALTH
+     Expected: "✅ Orchestrator Online - 1.0.0"
+  2. Click: 🔍 SMART-CHEM
+     Expected: "✅ Smart-Chem: ONLINE (port 8000)"
+  3. Click: 🧪 BIONEMO
+     Expected: "✅ BioNeMo: ONLINE (port 5000)"
+
+Option B - Full Test (3-5 minutes):
+  1. Do Option A first
+  2. Click: 🚀 RUN DISCOVERY
+     Wait for results (30-120 seconds)
+     You will see: Top 5 drug candidates with ADMET scores
+
+Option C - Test with Different Target:
+  1. Change "Target Name" from "EBNA1" to something else
+     Examples: "SARS-CoV-2 Main Protease", "EGFR", "Cancer Target"
+  2. Click: 🚀 RUN DISCOVERY
+  3. Watch results appear!
+
+═══════════════════════════════════════════════════════════════════════════════
+📊 EXPECTED RESULTS
+═══════════════════════════════════════════════════════════════════════════════
+
+When you click "RUN DISCOVERY", you should see:
+
+[Status bar]: 🔄 Running discovery pipeline...
+              [After 30-120 seconds]
+              ✅ Discovery complete!
+
+[Results Panel - Left]:
+  Target: EBNA1
+  Generated: 8 | Validated: 8 | ADMET: 8
+  
+  TOP CANDIDATES:
+  
+  #1 - ADMET: 0.85 | QED: 0.89
+  CC(=O)Nc1ccc(O)cc1
+  MW: 151.16 | LogP: 1.23 | TPSA: 49.33
+  Toxicity: ✅ NO | BBB: ✅ YES
+  
+  #2 - ADMET: 0.82 | QED: 0.87
+  ...
+
+[JSON Panel - Right]:
+  {
+    "target": "EBNA1",
+    "timestamp": "2026-01-10T...",
+    "generation_stage": { ... },
+    "docking_stage": { ... },
+    "admet_stage": { ... },
+    "top_candidates": [ ... ]
+  }
+
+═══════════════════════════════════════════════════════════════════════════════
+🐛 IF SOMETHING GOES WRONG
+═══════════════════════════════════════════════════════════════════════════════
+
+Check List:
+  [ ] Is the SIMPLE_START.sh terminal still open and running?
+  [ ] Did you open http://localhost:3000 (not :7000!)?
+  [ ] Press F12 in browser to see console errors
+  [ ] Check the logs:
+      tail -f /tmp/orch.log  (orchestrator)
+      tail -f /tmp/sc.log    (smart-chem)
+      tail -f /tmp/bn.log    (bionemo)
+      tail -f /tmp/web.log   (web ui)
+
+If health check fails:
+  1. Check the orchestrator log: tail /tmp/orch.log
+  2. Look for error messages (import errors, port conflicts)
+  3. Kill everything: pkill -f 'python\|uvicorn'
+  4. Wait 2 seconds
+  5. Run SIMPLE_START.sh again
+
+If "Failed to fetch":
+  1. Press F12 to see browser console
+  2. Look for the exact error message
+  3. Make sure http://localhost:3000 is correct URL
+  4. Check that services are running
+
+═══════════════════════════════════════════════════════════════════════════════
+📁 WHAT'S RUNNING
+═══════════════════════════════════════════════════════════════════════════════
+
+Port 3000 (http://localhost:3000):
+  Web UI server (web/server.py)
+  → Shows the interface you see in browser
+
+Port 7000 (http://localhost:7000):
+  Orchestrator API (orchestrator/main.py)
+  → Coordinates the 3-stage pipeline
+  → Endpoints: /health, /status/smartchem, /status/bionemo, /orchestrate/discover
+
+Port 8000 (http://localhost:8000):
+  Smart-Chem API (Smart-Chem/backend/main.py)
+  → Generates molecules using VAE
+  → Endpoint: /generate/targeted
+
+Port 5000 (http://localhost:5000):
+  BioNeMo API (bionemo/app.py)
+  → Validates & docks molecules
+  → Endpoints: /screen, /predict/diffdock
+
+═══════════════════════════════════════════════════════════════════════════════
+⚙️ ARCHITECTURE EXPLAINED
+═══════════════════════════════════════════════════════════════════════════════
+
+When you click "RUN DISCOVERY":
+
+1. Browser sends POST request to http://localhost:7000/orchestrate/discover
+2. Orchestrator receives it with: target, num_molecules, QED, LogP, SAS
+3. Orchestrator Stage 1: Calls Smart-Chem (port 8000)
+   → Generates molecules with VAE
+4. Orchestrator Stage 2: Calls BioNeMo (port 5000)
+   → Screens molecules for similarity
+   → Optionally docks them if protein provided
+5. Orchestrator Stage 3: Local ADMET prediction
+   → Calculates drug-likeness using Lipinski's rule
+   → Predicts toxicity and BBB penetration
+6. Orchestrator Ranks candidates by: ADMET + QED + similarity
+7. Returns top 5 to browser
+8. Browser displays results in left panel + raw JSON in right panel
+
+═══════════════════════════════════════════════════════════════════════════════
+⏱️ TIMING EXPECTATIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+First time running ./SIMPLE_START.sh:
+  - Dependency installation: ~30 seconds
+  - Service startup: ~5-10 seconds
+  - Total: ~40-50 seconds
+
+First time clicking RUN DISCOVERY:
+  - Smart-Chem loading VAE model: ~30 seconds
+  - Generation: ~10 seconds
+  - Validation: ~5 seconds
+  - ADMET: ~5 seconds
+  - Total: ~60-120 seconds
+
+Subsequent RUN DISCOVERY clicks:
+  - Much faster, models already loaded: ~30-60 seconds
+
+Health checks (CHECK HEALTH, SMART-CHEM, BIONEMO):
+  - Instant: <1 second
+
+═══════════════════════════════════════════════════════════════════════════════
+💾 HOW TO STOP EVERYTHING
+═══════════════════════════════════════════════════════════════════════════════
+
+Option 1 - Keep it simple:
+  In the SIMPLE_START.sh terminal: Press Ctrl+C
+
+Option 2 - Kill all services:
+  pkill -f 'python\|uvicorn'
+
+Option 3 - Kill specific services:
+  lsof -i :7000 | grep LISTEN | awk '{print $2}' | xargs kill -9
+  lsof -i :8000 | grep LISTEN | awk '{print $2}' | xargs kill -9
+  lsof -i :5000 | grep LISTEN | awk '{print $2}' | xargs kill -9
+  lsof -i :3000 | grep LISTEN | awk '{print $2}' | xargs kill -9
+
+═══════════════════════════════════════════════════════════════════════════════
+🎬 FOR JUDGES/DEMO
+═══════════════════════════════════════════════════════════════════════════════
+
+Before demo:
+1. Start everything: ./SIMPLE_START.sh
+2. Open http://localhost:3000
+3. Click "CHECK HEALTH" once to warm up (should be instant)
+
+During demo:
+1. Show the web UI: http://localhost:3000
+2. Click "CHECK HEALTH" → "✅ Orchestrator Online"
+3. Click "RUN DISCOVERY" → Show results appearing
+4. Explain: This is integrating 3 best-in-class projects
+5. Show the code: cat orchestrator/main.py
+6. Mention: Pure vanilla JavaScript, real async API calls, no frameworks
+
+Talking points:
+  "This is a complete drug discovery platform. We integrated:
+   1. Smart-Chem for molecular generation
+   2. BioNeMo for validation and docking
+   3. EBNA1 pipeline for ADMET safety scoring
+   
+   We built the orchestration layer that ties them together,
+   creates an autonomous workflow, and provides both API and web UI.
+   
+   The innovation is in the integration - smart ranking,
+   fault tolerance, and production-ready architecture."
+
+═══════════════════════════════════════════════════════════════════════════════
+
+READY? LET'S GO!
+
+cd ~/hackathon
+./SIMPLE_START.sh
+
+Then open: http://localhost:3000
+
+═══════════════════════════════════════════════════════════════════════════════

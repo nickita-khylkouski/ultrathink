@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3Dmol.js Test</title>
+    <script src="https://3Dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
+    <style>
+        body { font-family: monospace; background: #000; color: #0f0; padding: 20px; }
+        #viewer { width: 400px; height: 400px; border: 2px solid #0f0; position: relative; }
+        .status { padding: 10px; margin: 10px 0; border: 1px solid #0f0; }
+    </style>
+</head>
+<body>
+    <h1>🧬 3Dmol.js Test</h1>
+
+    <div class="status" id="status">Testing 3Dmol.js library...</div>
+
+    <h2>Simple Molecule (Ethanol):</h2>
+    <div id="viewer"></div>
+
+    <h2>Test Results:</h2>
+    <div id="results"></div>
+
+    <script>
+        let results = [];
+
+        // Test 1: Check if 3Dmol is loaded
+        if (window.$3Dmol) {
+            results.push("✅ 3Dmol.js library loaded");
+        } else {
+            results.push("❌ 3Dmol.js library NOT loaded");
+        }
+
+        // Test 2: Try to create viewer
+        try {
+            let viewer = $3Dmol.createViewer("viewer", {backgroundColor: '#000000'});
+            results.push("✅ Viewer created successfully");
+
+            // Test 3: Add a simple SDF model
+            let sdfData = `
+     RDKit          3D
+
+  9  8  0  0  0  0  0  0  0  0999 V2000
+    1.0900   -0.0600   -0.0300 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.3600   -0.3700   -0.0400 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.1800    0.4100    0.1300 O   0  0  0  0  0  0  0  0  0  0  0  0
+    1.6200    0.8700    0.0900 H   0  0  0  0  0  0  0  0  0  0  0  0
+    1.4000   -0.5300   -0.9200 H   0  0  0  0  0  0  0  0  0  0  0  0
+    1.2700   -0.6600    0.8000 H   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.6600   -1.3800   -0.1700 H   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.1100    0.1900    0.1200 H   0  0  0  0  0  0  0  0  0  0  0  0
+  1  2  1  0
+  2  3  1  0
+  1  4  1  0
+  1  5  1  0
+  1  6  1  0
+  2  7  1  0
+  3  8  1  0
+M  END
+`;
+
+            viewer.addModel(sdfData, "sdf");
+            results.push("✅ SDF model added");
+
+            viewer.setStyle({}, {stick: {colorscheme: 'Jmol'}});
+            results.push("✅ Style applied");
+
+            viewer.zoomTo();
+            results.push("✅ Zoom applied");
+
+            viewer.render();
+            results.push("✅ Render called");
+
+        } catch (err) {
+            results.push(`❌ Error: ${err.message}`);
+        }
+
+        // Display results
+        document.getElementById("status").innerHTML = "<strong>✅ Test Complete!</strong>";
+        let resultsHtml = "";
+        results.forEach(r => {
+            resultsHtml += `<div class="status">${r}</div>`;
+        });
+        document.getElementById("results").innerHTML = resultsHtml;
+
+        // Also log to console
+        console.log("Test Results:", results);
+    </script>
+</body>
+</html>
