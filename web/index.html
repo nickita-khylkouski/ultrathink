@@ -968,6 +968,81 @@
             box.className = "status " + type;
         }
 
+        // ===== INPUT VALIDATION HELPERS =====
+        function validateProteinSequence(sequence) {
+            // Valid amino acid one-letter codes
+            const validAminoAcids = 'ACDEFGHIKLMNPQRSTVWY';
+            const cleaned = sequence.toUpperCase().replace(/\s/g, '');
+
+            for (let char of cleaned) {
+                if (!validAminoAcids.includes(char)) {
+                    return {
+                        valid: false,
+                        error: `Invalid amino acid '${char}'. Use only: ${validAminoAcids}`
+                    };
+                }
+            }
+
+            if (cleaned.length < 3) {
+                return {
+                    valid: false,
+                    error: "Sequence too short (minimum 3 amino acids)"
+                };
+            }
+
+            if (cleaned.length > 2000) {
+                return {
+                    valid: false,
+                    error: "Sequence too long (maximum 2000 amino acids for performance)"
+                };
+            }
+
+            return { valid: true, cleaned: cleaned };
+        }
+
+        function validateSMILES(smiles) {
+            // Basic SMILES validation
+            const cleaned = smiles.trim();
+
+            if (cleaned.length === 0) {
+                return {
+                    valid: false,
+                    error: "SMILES string cannot be empty"
+                };
+            }
+
+            // Check for balanced parentheses
+            let depth = 0;
+            for (let char of cleaned) {
+                if (char === '(') depth++;
+                if (char === ')') depth--;
+                if (depth < 0) {
+                    return {
+                        valid: false,
+                        error: "Unbalanced parentheses in SMILES"
+                    };
+                }
+            }
+
+            if (depth !== 0) {
+                return {
+                    valid: false,
+                    error: "Unbalanced parentheses in SMILES"
+                };
+            }
+
+            // Check for invalid characters (basic check)
+            const validChars = /^[A-Za-z0-9@+\-\[\]()=#$\/\\\.%]*$/;
+            if (!validChars.test(cleaned)) {
+                return {
+                    valid: false,
+                    error: "SMILES contains invalid characters"
+                };
+            }
+
+            return { valid: true, cleaned: cleaned };
+        }
+
         // ===== ERROR HANDLING HELPERS =====
         function getHumanReadableError(error) {
             // Network errors
@@ -2896,6 +2971,23 @@ Respond with: Legal status (NCE/not), Pharmacological novelty (0-100%), and reco
                 return;
             }
 
+            // Validate protein sequence
+            const validation = validateProteinSequence(sequence);
+            if (!validation.valid) {
+                updateStatus(`❌ ${validation.error}`, "error");
+                document.getElementById("protein-info").innerHTML = `
+                    <div class="error" style="padding: 15px;">
+                        <strong style="color: #ff4444;">❌ Invalid Protein Sequence</strong><br><br>
+                        <div style="color: #ff8888;">${validation.error}</div><br>
+                        <div style="font-size: 10px; color: #ffaa66;">
+                            <strong>💡 Valid Amino Acids:</strong><br>
+                            A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
             // Set loading state
             setLoading("btn-predict-protein", true, "Predicting...");
             updateStatus("🧬 Predicting protein structure with ESMFold...", "healthy");
@@ -3132,6 +3224,62 @@ Respond with: Legal status (NCE/not), Pharmacological novelty (0-100%), and reco
                 // Button is already in HTML, no need to add dynamically
             }
         }
+
+        // ===== KEYBOARD SHORTCUTS =====
+        document.addEventListener('DOMContentLoaded', () => {
+            document.addEventListener('keydown', (e) => {
+                // Ctrl/Cmd + D: Download PDB (if available)
+                if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                    e.preventDefault();
+                    if (currentPDBData) {
+                        downloadPDB();
+                        updateStatus("⌨️ Downloaded via keyboard shortcut (Ctrl+D)", "healthy");
+                    }
+                }
+
+                // Ctrl/Cmd + K: Focus target input
+                if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                    e.preventDefault();
+                    document.getElementById('target').focus();
+                    updateStatus("⌨️ Keyboard shortcut: Ctrl+K", "healthy");
+                }
+
+                // Enter key in protein sequence field: trigger prediction
+                if (e.key === 'Enter' && e.target.id === 'protein-sequence') {
+                    e.preventDefault();
+                    predictProteinStructure();
+                }
+
+                // Enter key in target field: trigger discovery
+                if (e.key === 'Enter' && e.target.id === 'target') {
+                    e.preventDefault();
+                    runDiscovery();
+                }
+
+                // Escape: Clear status message
+                if (e.key === 'Escape') {
+                    updateStatus("✅ Ready! Click DISCOVER to start", "healthy");
+                }
+            });
+
+            // Show keyboard shortcuts hint on first load
+            setTimeout(() => {
+                const hints = document.createElement('div');
+                hints.style = 'position: fixed; bottom: 10px; right: 10px; background: #1a1a1a; border: 1px solid #00ff00; padding: 10px; font-size: 9px; color: #00ff88; border-radius: 3px; z-index: 1000;';
+                hints.innerHTML = `
+                    <strong>⌨️ Keyboard Shortcuts:</strong><br>
+                    Enter = Submit | Ctrl+D = Download | Ctrl+K = Focus Search | Esc = Clear
+                `;
+                document.body.appendChild(hints);
+
+                // Auto-hide after 8 seconds
+                setTimeout(() => {
+                    hints.style.transition = 'opacity 1s';
+                    hints.style.opacity = '0';
+                    setTimeout(() => hints.remove(), 1000);
+                }, 8000);
+            }, 2000);
+        });
 
     </script>
 </body>
