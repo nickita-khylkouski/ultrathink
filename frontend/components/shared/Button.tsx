@@ -37,15 +37,16 @@ export function Button({
       className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
       disabled={disabled || loading}
       aria-busy={loading}
+      aria-live={loading ? 'polite' : undefined}
       {...props}
     >
-      {loading && (
-        <>
+      <span className="flex items-center justify-center">
+        {loading && (
           <Loader2 className="inline-block mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-          <span className="sr-only">Loading...</span>
-        </>
-      )}
-      {children}
+        )}
+        <span>{children}</span>
+      </span>
+      {loading && <span className="sr-only">Loading</span>}
     </button>
   );
 }

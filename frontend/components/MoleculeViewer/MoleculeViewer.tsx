@@ -24,14 +24,8 @@ export function MoleculeViewer({
   const viewerInstance = useRef<$3Dmol.GLViewer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const oldSmiles = useRef<string>('');
 
   useEffect(() => {
-    // Don't re-render if SMILES hasn't changed
-    if (oldSmiles.current === smiles && viewerInstance.current) {
-      return;
-    }
-
     let cancelled = false;
     let timeoutId: NodeJS.Timeout | null = null;
 
@@ -79,7 +73,6 @@ export function MoleculeViewer({
 
             setIsLoading(false);
             setError(null);
-            oldSmiles.current = smiles;
           } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Unknown error';
             console.error('Error rendering molecule:', errorMessage);
@@ -104,18 +97,13 @@ export function MoleculeViewer({
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-    };
-  }, [smiles, backgroundColor, style]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
+      // Clear viewer on unmount or when dependencies change
       if (viewerInstance.current) {
         viewerInstance.current.clear();
         viewerInstance.current = null;
       }
     };
-  }, []);
+  }, [smiles, backgroundColor, style]);
 
   return (
     <div className="relative">

@@ -9,16 +9,29 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: '#00ff00',
-        secondary: '#00ff88',
-        accent: '#00ffff',
-        warning: '#ffff00',
-        danger: '#ff0000',
-        background: '#0a0a0a',
-        panel: '#1a1a1a',
+        // Researcher-focused black & white palette
+        primary: '#000000',       // Pure black for primary actions
+        secondary: '#1a1a1a',     // Dark gray for secondary elements
+        accent: '#333333',        // Medium gray for accents
+        warning: '#666666',       // Gray for warnings (not alarming)
+        danger: '#000000',        // Black for errors (professional)
+        background: '#ffffff',    // Pure white background
+        panel: '#f5f5f5',         // Light gray for panels
+        border: '#e0e0e0',        // Subtle gray borders
+        text: {
+          primary: '#000000',     // Black text
+          secondary: '#666666',   // Gray text
+          muted: '#999999',       // Light gray text
+        },
       },
       fontFamily: {
-        mono: ['monospace'],
+        mono: ['Courier New', 'monospace'],
+        sans: ['Arial', 'Helvetica', 'sans-serif'],
+        serif: ['Georgia', 'Times New Roman', 'serif'],
+      },
+      fontSize: {
+        'research': '14px',      // Optimal for reading research content
+        'data': '12px',          // For data tables
       },
     },
   },

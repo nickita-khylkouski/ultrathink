@@ -10,11 +10,29 @@ Use your Write, Edit, Read, and Bash tools to complete this task.
 
 📖 INSTRUCTIONS
 ===============
-1. Execute ALL 10 steps sequentially in order
-2. Do NOT skip any steps
-3. If a step fails, STOP and report the error - do not continue
-4. After completing all steps successfully, verify the completion checklist
-5. Report final status: SUCCESS if all steps completed, FAILED with error details if any step failed
+BEFORE starting, use TodoWrite tool with this JSON array:
+```json
+[
+  {"content": "Update requirements.txt with auth dependencies", "activeForm": "Updating requirements.txt", "status": "pending"},
+  {"content": "Create .env file with MongoDB and JWT config", "activeForm": "Creating .env file", "status": "pending"},
+  {"content": "Create auth directory", "activeForm": "Creating auth directory", "status": "pending"},
+  {"content": "Create auth/database.py", "activeForm": "Creating auth/database.py", "status": "pending"},
+  {"content": "Create auth/security.py", "activeForm": "Creating auth/security.py", "status": "pending"},
+  {"content": "Create auth/models.py", "activeForm": "Creating auth/models.py", "status": "pending"},
+  {"content": "Create auth/router.py", "activeForm": "Creating auth/router.py", "status": "pending"},
+  {"content": "Create auth/__init__.py", "activeForm": "Creating auth/__init__.py", "status": "pending"},
+  {"content": "Update main.py with auth imports and router", "activeForm": "Updating main.py", "status": "pending"},
+  {"content": "Run tests to verify authentication works", "activeForm": "Running authentication tests", "status": "pending"}
+]
+```
+
+THEN execute all 10 steps:
+1. Execute ALL steps sequentially in order
+2. Mark each step as in_progress before starting it, completed after finishing it
+3. Do NOT skip any steps
+4. If a step fails, STOP and report the error - do not continue
+5. After completing all steps successfully, verify the completion checklist
+6. Report final status: SUCCESS if all steps completed, FAILED with error details if any step failed
 
 
 📋 STEP 1: Update requirements.txt
@@ -52,7 +70,13 @@ email-validator>=2.0.0
 
 Then use Bash tool to install all auth dependencies:
 ```bash
-pip install python-jose[cryptography] passlib[argon2] motor python-multipart email-validator
+pip install python-jose[cryptography] passlib[argon2] motor python-multipart email-validator || (echo "✗ Failed to install dependencies" && exit 1)
+echo "✓ All auth dependencies installed successfully"
+```
+
+Use Bash tool to verify critical imports work:
+```bash
+python3 -c "from jose import jwt; from passlib.context import CryptContext; from motor.motor_asyncio import AsyncIOMotorClient; from pydantic import EmailStr; print('✓ All imports verified')" || (echo "✗ Import verification failed - check pip install" && exit 1)
 ```
 
 
@@ -60,7 +84,8 @@ pip install python-jose[cryptography] passlib[argon2] motor python-multipart ema
 ============================
 Use Bash tool to ensure MongoDB is installed and running:
 ```bash
-brew services list | grep -q "mongodb.*started" || (brew install mongodb-community 2>/dev/null; brew services start mongodb-community)
+brew services list | grep -q "mongodb.*started" || (brew install mongodb-community && brew services start mongodb-community)
+brew services list | grep -q "mongodb.*started" && echo "✓ MongoDB is running" || (echo "✗ MongoDB failed to start" && exit 1)
 ```
 
 Use Write tool to create: /Users/nickita/hackathon/orchestrator/.env
@@ -378,36 +403,32 @@ Use Bash tool to verify server started successfully:
 curl -s http://localhost:8001/docs > /dev/null && echo "✓ Server is running" || (echo "✗ Server failed to start. Check /tmp/uvicorn.log" && tail -20 /tmp/uvicorn.log && exit 1)
 ```
 
-Use Bash tool to clear any existing test user (ensures tests are repeatable):
+Use Bash tool to run all authentication tests (single session to preserve variables):
 ```bash
-mongosh ultrathink_db --quiet --eval 'db.users.deleteMany({username: "testuser"})' 2>/dev/null || echo "MongoDB shell not available, skipping cleanup"
-```
+# Generate unique test username
+TEST_USER="testuser_$(date +%s)"
+echo "Test username: $TEST_USER"
 
-Use Bash tool to test registration:
-```bash
+# Test registration
 REGISTER_RESPONSE=$(curl -s -X POST http://localhost:8001/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"username":"testuser","email":"test@example.com","password":"TestPass123"}')
+  -d "{\"username\":\"$TEST_USER\",\"email\":\"test@example.com\",\"password\":\"TestPass123\"}")
 echo "$REGISTER_RESPONSE"
 echo "$REGISTER_RESPONSE" | grep -q '"status":"success"' && echo "✓ Registration successful" || (echo "✗ Registration failed" && exit 1)
-```
 
-Use Bash tool to test login and save tokens:
-```bash
+# Test login and extract token
 LOGIN_RESPONSE=$(curl -s -X POST http://localhost:8001/auth/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=testuser&password=TestPass123")
+  -d "username=$TEST_USER&password=TestPass123")
 echo "$LOGIN_RESPONSE"
 echo "$LOGIN_RESPONSE" | grep -q '"access_token"' && echo "✓ Login successful, tokens received" || (echo "✗ Login failed" && exit 1)
 ACCESS_TOKEN=$(echo "$LOGIN_RESPONSE" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
 [ -n "$ACCESS_TOKEN" ] && echo "✓ Token extracted: ${ACCESS_TOKEN:0:20}..." || (echo "✗ Failed to extract access token" && exit 1)
-```
 
-Use Bash tool to test authenticated endpoint:
-```bash
+# Test authenticated endpoint
 ME_RESPONSE=$(curl -s http://localhost:8001/auth/me -H "Authorization: Bearer $ACCESS_TOKEN")
 echo "$ME_RESPONSE"
-echo "$ME_RESPONSE" | grep -q '"username":"testuser"' && echo "✓ Authenticated endpoint works" || (echo "✗ Authentication failed" && exit 1)
+echo "$ME_RESPONSE" | grep -q "\"username\":\"$TEST_USER\"" && echo "✓ Authenticated endpoint works" || (echo "✗ Authentication failed" && exit 1)
 ```
 
 Use Bash tool to verify docs show auth endpoints:
@@ -452,3 +473,21 @@ Note: Uses .dict() not .model_dump() (Smart-Chem pattern)
 Note: email-validator required for Pydantic EmailStr validation
 Note: SECRET_KEY has fallback default to prevent crashes if .env fails to load
 Security Warning: SECRET_KEY in .env is for testing only. Generate new key for production using: python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           🎉 TASK COMPLETE                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+If you successfully completed all 10 steps and all tests passed with ✓ symbols:
+
+REPORT: ✅ SUCCESS - Authentication system fully implemented and tested
+- All dependencies installed
+- MongoDB running
+- Auth endpoints functional (/auth/register, /auth/login, /auth/me)
+- JWT authentication working
+- Documentation visible at http://localhost:8001/docs
+
+If any step failed:
+
+REPORT: ❌ FAILED - [Describe which step failed and the error message]

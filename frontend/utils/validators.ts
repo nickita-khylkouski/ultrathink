@@ -5,19 +5,9 @@ import { ValidationResult } from '@/types/api';
  * Valid amino acid one-letter codes: ACDEFGHIKLMNPQRSTVWY
  */
 export function validateProteinSequence(sequence: string): ValidationResult {
-  // Valid amino acid one-letter codes
-  const validAminoAcids = 'ACDEFGHIKLMNPQRSTVWY';
   const cleaned = sequence.toUpperCase().replace(/\s/g, '');
 
-  for (let char of cleaned) {
-    if (!validAminoAcids.includes(char)) {
-      return {
-        valid: false,
-        error: `Invalid amino acid '${char}'. Use only: ${validAminoAcids}`
-      };
-    }
-  }
-
+  // Check length first (fast fail)
   if (cleaned.length < 3) {
     return {
       valid: false,
@@ -29,6 +19,17 @@ export function validateProteinSequence(sequence: string): ValidationResult {
     return {
       valid: false,
       error: 'Sequence too long (maximum 2000 amino acids for performance)'
+    };
+  }
+
+  // Validate characters using regex (O(n) vs O(n*m) with includes)
+  const validPattern = /^[ACDEFGHIKLMNPQRSTVWY]+$/;
+  if (!validPattern.test(cleaned)) {
+    // Find first invalid character for better error message
+    const invalidChar = cleaned.match(/[^ACDEFGHIKLMNPQRSTVWY]/)?.[0];
+    return {
+      valid: false,
+      error: `Invalid amino acid '${invalidChar}'. Use only: ACDEFGHIKLMNPQRSTVWY`
     };
   }
 

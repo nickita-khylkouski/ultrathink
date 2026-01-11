@@ -103,26 +103,47 @@ export const useDiscoveryStore = create<DiscoveryState>((set, get) => ({
         // Validate that parsed data is an array
         if (!Array.isArray(parsed)) {
           console.warn('Invalid candidates data in localStorage, skipping load');
+          localStorage.removeItem('discovery_candidates');
           return;
         }
 
-        // Validate that each item has required Candidate properties
+        // Comprehensive validation for each candidate
         const isValid = parsed.every(
-          (item: unknown) =>
-            typeof item === 'object' &&
-            item !== null &&
-            'smiles' in item &&
-            'rank' in item
+          (item: unknown) => {
+            if (typeof item !== 'object' || item === null) return false;
+
+            const candidate = item as Record<string, unknown>;
+
+            // Required fields with type checking
+            return (
+              typeof candidate.smiles === 'string' &&
+              typeof candidate.rank === 'number' &&
+              typeof candidate.admet_score === 'number' &&
+              typeof candidate.lipinski_violations === 'number' &&
+              typeof candidate.toxicity_flag === 'boolean' &&
+              typeof candidate.bbb_penetration === 'boolean' &&
+              // Validate SMILES string doesn't contain script tags or suspicious patterns
+              !/[<>]/.test(candidate.smiles) &&
+              candidate.smiles.length > 0 &&
+              candidate.smiles.length < 1000
+            );
+          }
         );
 
         if (!isValid) {
-          console.warn('Candidates data missing required fields, skipping load');
+          console.warn('Candidates data validation failed, skipping load');
+          localStorage.removeItem('discovery_candidates');
           return;
         }
 
+        // Sanitize target name
+        const sanitizedTarget = savedTarget
+          ? savedTarget.replace(/[<>]/g, '').trim().slice(0, 100)
+          : '';
+
         set({
           candidates: parsed as Candidate[],
-          targetName: savedTarget || '',
+          targetName: sanitizedTarget,
         });
       }
     } catch (error) {

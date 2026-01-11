@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 
 // 3Dmol types are defined in types/3dmol.d.ts
@@ -20,7 +20,7 @@ export function ProteinViewer({
 }: ProteinViewerProps) {
   const viewerRef = useRef<HTMLDivElement>(null);
   const viewerInstance = useRef<$3Dmol.GLViewer | null>(null);
-  const isLoading = useRef(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
@@ -54,11 +54,11 @@ export function ProteinViewer({
         // Zoom to fit
         viewerInstance.current.zoomTo();
         viewerInstance.current.render();
-        isLoading.current = false;
+        setIsLoading(false);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error('Error rendering protein:', errorMessage);
-        isLoading.current = false;
+        setIsLoading(false);
       }
     };
 
@@ -84,7 +84,7 @@ export function ProteinViewer({
         style={{ width, height }}
         className="border-2 border-primary rounded bg-black"
       />
-      {isLoading.current && (
+      {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80">
           <LoadingSpinner message="Loading protein structure..." />
         </div>

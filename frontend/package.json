@@ -1,6 +1,6 @@
 {
   "name": "ultrathink-frontend",
-  "version": "0.5.0",
+  "version": "0.7.0",
   "description": "AI Drug Discovery Platform - Frontend",
   "private": true,
   "scripts": {

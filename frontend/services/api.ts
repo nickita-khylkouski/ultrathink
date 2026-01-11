@@ -42,10 +42,13 @@ async function fetchWithRetry<T>(
     return await requestFn();
   } catch (error) {
     if (retries > 0 && axios.isAxiosError(error)) {
+      // Retry on network errors and server errors
       const shouldRetry =
-        error.code === 'ECONNABORTED' ||
-        error.response?.status === 503 ||
-        error.response?.status === 504;
+        !error.response || // Network error (ECONNREFUSED, ETIMEDOUT, etc.)
+        error.code === 'ECONNABORTED' || // Request timeout
+        error.response.status === 503 || // Service Unavailable
+        error.response.status === 504 || // Gateway Timeout
+        error.response.status === 502;   // Bad Gateway
 
       if (shouldRetry) {
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));

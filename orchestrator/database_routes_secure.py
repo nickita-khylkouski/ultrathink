@@ -25,8 +25,10 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional, Annotated
 from pydantic import BaseModel, Field
+from passlib.context import CryptContext
 import uuid
 import jwt
+import os
 from datetime import datetime, timedelta
 
 from database import get_db
@@ -43,9 +45,19 @@ from database.security import (
 router = APIRouter()
 security = HTTPBearer()
 
-# JWT Configuration (should be in environment variables)
-SECRET_KEY = "your-secret-key-here"  # TODO: Move to environment variable
-ALGORITHM = "HS256"
+# JWT Configuration from environment variables
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError(
+        "SECRET_KEY environment variable is required. "
+        "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+    )
+
+ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+
+# Password hashing context
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 # ===== AUTHENTICATION =====
@@ -95,22 +107,59 @@ def get_current_user_id(
         )
 
 
-def create_access_token(user_id: uuid.UUID, expires_delta: timedelta = timedelta(hours=24)) -> str:
+def create_access_token(user_id: uuid.UUID, expires_delta: Optional[timedelta] = None) -> str:
     """
     Create a JWT access token for a user.
 
     Args:
         user_id: UUID of the user
-        expires_delta: Token expiration time
+        expires_delta: Token expiration time (default: ACCESS_TOKEN_EXPIRE_MINUTES)
 
     Returns:
         Encoded JWT token
     """
+    if expires_delta is None:
+        expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+
     to_encode = {
         "sub": str(user_id),
         "exp": datetime.utcnow() + expires_delta
     }
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def hash_password(password: str) -> str:
+    """
+    Hash a plaintext password using bcrypt.
+
+    Args:
+        password: Plaintext password
+
+    Returns:
+        Bcrypt hashed password
+
+    Example:
+        hashed = hash_password("my_secure_password")
+        # Returns: "$2b$12$KIX..."
+    """
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verify a plaintext password against a hashed password.
+
+    Args:
+        plain_password: Plaintext password to verify
+        hashed_password: Bcrypt hashed password from database
+
+    Returns:
+        True if password matches, False otherwise
+
+    Example:
+        is_valid = verify_password("my_password", user.hashed_password)
+    """
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 # ===== REQUEST/RESPONSE MODELS =====
@@ -512,12 +561,82 @@ async def update_current_user(
     return SecureUserResponse.from_user(updated_user)
 
 
-# ===== EXAMPLE: AUTHENTICATION ENDPOINT =====
+# ===== AUTHENTICATION ENDPOINTS =====
+
+class UserRegister(BaseModel):
+    """User registration request model"""
+    email: str = Field(..., description="Email address (must be unique)")
+    username: str = Field(..., min_length=3, max_length=50, description="Username (must be unique)")
+    password: str = Field(..., min_length=8, description="Password (min 8 characters)")
+    full_name: Optional[str] = Field(None, description="Full name")
+    institution: Optional[str] = Field(None, description="Institution/organization")
+
 
 class LoginRequest(BaseModel):
     """Login request model"""
     email: str
     password: str
+
+
+@router.post("/auth/register", status_code=status.HTTP_201_CREATED)
+async def register(
+    user_data: UserRegister,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Register a new user with secure password hashing.
+
+    Security Features:
+    - Password hashed with bcrypt before storage
+    - Email and username validated
+    - Default tier set to 'free'
+    - Handles duplicate email/username gracefully
+    - Returns secure response (no password)
+
+    Example:
+        POST /api/v1/db/auth/register
+        {
+            "email": "user@example.com",
+            "username": "johndoe",
+            "password": "SecurePassword123!",
+            "full_name": "John Doe",
+            "institution": "MIT"
+        }
+
+    Returns:
+        {
+            "id": "123e4567-...",
+            "email": "user@example.com",
+            "username": "johndoe",
+            "full_name": "John Doe",
+            "tier": "free",
+            "is_active": true,
+            "created_at": "2026-01-10T..."
+        }
+
+    Raises:
+        HTTPException 409: Email or username already exists
+        HTTPException 400: Invalid input data
+    """
+    from database.security import validate_email, validate_username
+
+    # Validate email and username format
+    validate_email(user_data.email)
+    validate_username(user_data.username)
+
+    repo = UserRepository(db)
+
+    # Prepare user data with hashed password
+    user_dict = user_data.model_dump(exclude={'password'})
+    user_dict['hashed_password'] = hash_password(user_data.password)
+    user_dict['tier'] = 'free'  # Default tier for new users
+    user_dict['is_active'] = True
+
+    # Repository handles duplicate email/username with proper error messages
+    user = await repo.create(user_dict)
+
+    # Return secure response (no password)
+    return SecureUserResponse.from_user(user)
 
 
 @router.post("/auth/login")
@@ -560,10 +679,20 @@ async def login(
             detail="Invalid email or password"
         )
 
-    # TODO: Verify password with bcrypt
-    # import bcrypt
-    # if not bcrypt.checkpw(credentials.password.encode(), user.hashed_password.encode()):
-    #     raise HTTPException(status_code=401, detail="Invalid email or password")
+    # Security: Verify password hash with bcrypt
+    if not verify_password(credentials.password, user.hashed_password):
+        # Security: Same generic error (don't reveal if email or password is wrong)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password"
+        )
+
+    # Security: Check if account is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated. Please contact support."
+        )
 
     # Create JWT token
     access_token = create_access_token(user.id)

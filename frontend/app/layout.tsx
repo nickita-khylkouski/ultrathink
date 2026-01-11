@@ -4,16 +4,16 @@ import Script from 'next/script'
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
 
 export const metadata: Metadata = {
-  title: 'AI Drug Discovery Platform',
-  description: 'Accelerate drug discovery with AI: Traditional screening, protein structure prediction, and molecular evolution',
-  keywords: ['drug discovery', 'AI', 'molecular visualization', 'ESMFold', 'MolGAN', 'ADMET', 'protein structure'],
-  authors: [{ name: 'AI Drug Discovery Team' }],
+  title: 'ULTRATHINK - Computational Drug Discovery Platform',
+  description: 'Open-source computational drug discovery: ADMET screening, protein structure prediction, molecular evolution, and research paper integration',
+  keywords: ['drug discovery', 'computational chemistry', 'molecular visualization', 'ESMFold', 'MolGAN', 'ADMET', 'protein structure', 'PubMed', 'DeepChem', 'research'],
+  authors: [{ name: 'ULTRATHINK Research Team' }],
   icons: {
     icon: '/favicon.svg',
   },
   openGraph: {
-    title: 'AI Drug Discovery Platform',
-    description: 'Accelerate drug discovery with AI-powered tools',
+    title: 'ULTRATHINK - Computational Drug Discovery',
+    description: 'Open-source platform for researchers accelerating drug discovery',
     type: 'website',
   },
 }
