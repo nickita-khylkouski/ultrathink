@@ -63,22 +63,20 @@ test.describe('ULTRATHINK Platform - End-to-End Tests', () => {
     const input = page.locator('input[placeholder*="ADMET"]');
     await input.fill('aspirin');
 
-    // Click search button - use more specific selector to avoid tab match
-    const searchButton = page.locator('button').filter({ hasText: 'Search' }).and(page.locator('button[aria-busy]'));
+    // Click search button
+    const searchButton = page.locator('button:has-text("Search")').first();
     await searchButton.click();
 
     // Wait a bit for any response (success or error)
     await page.waitForTimeout(3000);
 
-    // Test passes if: button is re-enabled OR we got an error OR we got results
-    // This is lenient because external API may fail
-    const buttonEnabled = await searchButton.isEnabled();
+    // Test passes if tab is still visible (meaning UI didn't crash)
+    const tabStillVisible = await page.locator('h2:has-text("PubMed Research Search")').isVisible();
     const hasError = await page.locator('text=/error|Error|failed/i').isVisible().catch(() => false);
     const hasResults = await page.locator('text=/Results|PMID/').isVisible().catch(() => false);
-    const tabStillVisible = await page.locator('h2:has-text("PubMed Research Search")').isVisible();
 
     // As long as the UI didn't crash, test passes
-    expect(buttonEnabled || hasError || hasResults || tabStillVisible).toBeTruthy();
+    expect(tabStillVisible || hasError || hasResults).toBeTruthy();
   });
 
   test('ChEMBL Search functionality', async ({ page }) => {

@@ -18,7 +18,16 @@ import { ChEMBLSearch } from '@/components/ChEMBLSearch/ChEMBLSearch';
 import { MolecularDocking } from '@/components/MolecularDocking/MolecularDocking';
 import { KeyboardShortcuts } from '@/components/KeyboardShortcuts/KeyboardShortcuts';
 import { Card } from '@/components/shared/Card';
-import { Activity, XCircle, FlaskConical, Dna, Sparkles, BookOpen, Code2, Database, Target } from 'lucide-react';
+// Use individual imports to avoid Next.js barrel optimization issues
+import { Activity } from 'lucide-react';
+import { XCircle } from 'lucide-react';
+import { FlaskConical } from 'lucide-react';
+import { Dna } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
+import { Code2 } from 'lucide-react';
+import { Database } from 'lucide-react';
+import { Target } from 'lucide-react';
 
 type SystemTab = 'discovery' | 'esmfold' | 'molgan' | 'research' | 'models' | 'chembl' | 'docking';
 

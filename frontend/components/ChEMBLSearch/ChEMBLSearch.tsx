@@ -6,6 +6,7 @@ import { Button } from '@/components/shared/Button';
 import { Input } from '@/components/shared/Input';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { ErrorMessage } from '@/components/shared/ErrorMessage';
+import { useSearchCache } from '@/hooks/useSearchCache';
 import { Database, ExternalLink, Pill, Activity } from 'lucide-react';
 
 interface ChEMBLMolecule {
@@ -34,6 +35,10 @@ export function ChEMBLSearch() {
   const [results, setResults] = useState<ChEMBLMolecule[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fromCache, setFromCache] = useState(false);
+
+  // Cache with 10 minute TTL (ChEMBL data changes less frequently)
+  const { getCached, setCached, cacheSize } = useSearchCache<ChEMBLMolecule[]>({ ttl: 10 * 60 * 1000 });
 
   const searchChEMBL = async () => {
     if (!query.trim()) {
@@ -41,9 +46,21 @@ export function ChEMBLSearch() {
       return;
     }
 
+    // Check cache first
+    const cacheKey = `chembl:${searchType}:${query.toLowerCase().trim()}`;
+    const cached = getCached(cacheKey);
+
+    if (cached) {
+      setResults(cached);
+      setFromCache(true);
+      setError(null);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setResults([]);
+    setFromCache(false);
 
     try {
       let searchUrl = '';
@@ -86,6 +103,9 @@ export function ChEMBLSearch() {
       }));
 
       setResults(molecules);
+
+      // Cache successful results
+      setCached(cacheKey, molecules);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to search ChEMBL database');
     } finally {
@@ -168,7 +188,15 @@ export function ChEMBLSearch() {
         {results.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between py-2 border-b-2 border-black">
-              <h3 className="font-bold">Results ({results.length})</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold">Results ({results.length})</h3>
+                {fromCache && (
+                  <span className="flex items-center gap-1 text-xs font-mono bg-panel px-2 py-1 border border-black">
+                    <Database className="h-3 w-3" />
+                    Cached ({cacheSize} searches)
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-text-secondary">Source: ChEMBL Database (EBI)</p>
             </div>
 

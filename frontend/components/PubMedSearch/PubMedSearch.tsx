@@ -7,7 +7,7 @@ import { Input } from '@/components/shared/Input';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { ErrorMessage } from '@/components/shared/ErrorMessage';
 import { useSearchCache } from '@/hooks/useSearchCache';
-import { BookOpen, ExternalLink, FileText, Database } from 'lucide-react';
+import { BookOpen, ExternalLink, FileText, Database, Download } from 'lucide-react';
 
 interface PubMedArticle {
   pmid: string;
@@ -105,6 +105,27 @@ export function PubMedSearch() {
     setShowAbstracts(newShowAbstracts);
   };
 
+  const exportResults = () => {
+    const exportText = results.map((article, idx) => `
+${idx + 1}. ${article.title}
+   Authors: ${article.authors}
+   Journal: ${article.journal}
+   Published: ${article.pubdate}
+   PMID: ${article.pmid}
+   URL: ${article.url}
+`).join('\n---\n');
+
+    const blob = new Blob([`PubMed Search Results\nQuery: ${query}\nDate: ${new Date().toISOString()}\nTotal Results: ${results.length}\n\n${exportText}`], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pubmed_results_${query.replace(/[^a-z0-9]/gi, '_')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Card className="border-2 border-black">
       <div className="p-6">
@@ -155,7 +176,18 @@ export function PubMedSearch() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-text-secondary">Source: PubMed / NCBI E-utilities</p>
+              <div className="flex items-center gap-4">
+                <Button
+                  onClick={exportResults}
+                  size="sm"
+                  variant="secondary"
+                  className="flex items-center gap-1"
+                >
+                  <Download className="h-3 w-3" />
+                  Export Results
+                </Button>
+                <p className="text-xs text-text-secondary">Source: PubMed / NCBI E-utilities</p>
+              </div>
             </div>
 
             {results.map((article) => (
