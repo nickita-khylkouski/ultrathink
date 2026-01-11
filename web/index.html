@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Drug Discovery Platform</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <script src="https://unpkg.com/smiles-drawer@1.2.0/dist/smiles-drawer.min.js"></script>
     <script src="https://3Dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
     <style>
@@ -43,6 +44,48 @@
         .success { color: #00ff00; padding: 5px 0; }
         .loading { animation: pulse 1s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+        /* Enhanced Loading States */
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #00ff00;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #333 !important;
+            color: #666 !important;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #1a1a1a;
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #00ff88);
+            animation: progress 2s ease-in-out infinite;
+        }
+        @keyframes progress {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
         .molecular-info { font-size: 11px; line-height: 1.6; }
         .common-drugs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
         .drug-btn { padding: 6px; background: #003355; color: #00ffff; border: 1px solid #00ffff; border-radius: 3px; cursor: pointer; font-size: 10px; }
@@ -89,7 +132,7 @@
                 <input type="text" id="target" value="EBNA1" placeholder="Try: EBNA1, Cancer, Alzheimer's, Malaria..." title="Enter any drug target or disease name">
                 <input type="number" id="num-mol" value="5" min="1" max="20" placeholder="How many candidates" title="Number of drug candidates to generate">
                 <button onclick="checkHealth()" title="Check if system is online">💓 HEALTH</button>
-                <button onclick="runDiscovery()" title="Generate drug candidates">🚀 DISCOVER</button>
+                <button id="btn-discover" onclick="runDiscovery()" title="Generate drug candidates">🚀 DISCOVER</button>
                 <button onclick="showTools()" title="Show GitHub tools used" style="background: #004488;">🔧 TOOLS</button>
                 <button onclick="generateReport()" title="Create summary report">📊 REPORT</button>
                 <button onclick="compareCandidates()" title="Compare all 5 candidates" style="background: #004488;">🔄 COMPARE</button>
@@ -361,7 +404,7 @@
                             <button class="tool-btn" onclick="generateSARAnalysisAI()" style="width: 100%; margin: 3px 0; background: #004488;">📊 SAR</button>
 
                             <div style="margin-top: 10px; margin-bottom: 5px; color: #00ff00; font-weight: bold; font-size: 8px; border-top: 1px solid #333; padding-top: 8px;">🔬 RESEARCH MODELS (AI Papers):</div>
-                            <button class="tool-btn" onclick="evolveWithMolGAN()" style="width: 100%; margin: 3px 0; background: #004400; border: 1px solid #00ff00;">🎨 MolGAN - AI Generation</button>
+                            <button id="btn-molgan" class="tool-btn" onclick="evolveWithMolGAN()" style="width: 100%; margin: 3px 0; background: #004400; border: 1px solid #00ff00;">🎨 MolGAN - AI Generation</button>
 
                             <div style="margin-top: 10px; margin-bottom: 5px; color: #ff8844; font-weight: bold; font-size: 8px; border-top: 1px solid #333; padding-top: 8px;">⚡ ADVANCED TOOLS:</div>
                             <button class="tool-btn" onclick="dockToTargetS2()" style="width: 100%; margin: 3px 0; background: #663300;">🎯 Molecular Docking</button>
@@ -429,7 +472,7 @@
             <div class="controls">
                 <input type="text" id="protein-name" placeholder="Protein name (e.g., ACE2, SPIKE, INSULIN)..." title="Optional protein name for AlphaFold DB lookup">
                 <input type="text" id="protein-sequence" placeholder="Protein sequence (amino acids: MKTII...)" style="grid-column: 1/4;" title="Enter amino acid sequence">
-                <button onclick="predictProteinStructure()" title="Predict 3D structure" style="background: #0066ff;">🧬 PREDICT</button>
+                <button id="btn-predict-protein" onclick="predictProteinStructure()" title="Predict 3D structure" style="background: #0066ff;">🧬 PREDICT</button>
                 <button onclick="loadCommonProtein()" title="Load a common protein example" style="background: #004488;">📋 EXAMPLES</button>
             </div>
 
@@ -925,6 +968,55 @@
             box.className = "status " + type;
         }
 
+        // ===== LOADING STATE HELPERS =====
+        function setLoading(buttonId, isLoading, loadingText = "Loading...") {
+            const btn = document.getElementById(buttonId);
+            if (!btn) return;
+
+            if (isLoading) {
+                btn.disabled = true;
+                btn.dataset.originalText = btn.innerHTML;
+                btn.innerHTML = `<span class="spinner"></span>${loadingText}`;
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = btn.dataset.originalText || btn.innerHTML.replace(/<span class="spinner"><\/span>/, '');
+            }
+        }
+
+        function setLoadingByElement(btnElement, isLoading, loadingText = "Loading...") {
+            if (!btnElement) return;
+
+            if (isLoading) {
+                btnElement.disabled = true;
+                btnElement.dataset.originalText = btnElement.innerHTML;
+                btnElement.innerHTML = `<span class="spinner"></span>${loadingText}`;
+            } else {
+                btnElement.disabled = false;
+                btnElement.innerHTML = btnElement.dataset.originalText || btnElement.innerHTML.replace(/<span class="spinner"><\/span>/, '');
+            }
+        }
+
+        function showProgressBar(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const progressHtml = '<div class="progress-bar"><div class="progress-fill"></div></div>';
+            const existing = container.querySelector('.progress-bar');
+            if (!existing) {
+                container.insertAdjacentHTML('afterbegin', progressHtml);
+            }
+        }
+
+        function hideProgressBar(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const progressBar = container.querySelector('.progress-bar');
+            if (progressBar) {
+                progressBar.remove();
+            }
+        }
+
         function setDrug(name) {
             document.getElementById("target").value = name;
             updateStatus(`Changed target to ${name}`, "info");
@@ -943,7 +1035,11 @@
         }
 
         async function runDiscovery() {
+            // Set loading state
+            setLoading("btn-discover", true, "Discovering...");
             updateStatus("🧬 Generating drugs...", "info");
+            showProgressBar("candidates-list");
+
             const target = document.getElementById("target").value;
             const numMol = parseInt(document.getElementById("num-mol").value);
 
@@ -966,6 +1062,10 @@
                 updateStatus(`✅ Generated ${allCandidates.length} candidates for ${target}`, "healthy");
             } catch (e) {
                 updateStatus(`❌ Error: ${e.message}`, "error");
+            } finally {
+                // Clear loading state
+                setLoading("btn-discover", false);
+                hideProgressBar("candidates-list");
             }
         }
 
@@ -2687,8 +2787,11 @@ Respond with: Legal status (NCE/not), Pharmacological novelty (0-100%), and reco
                 return;
             }
 
+            // Set loading state
+            setLoading("btn-predict-protein", true, "Predicting...");
             updateStatus("🧬 Predicting protein structure with ESMFold...", "healthy");
-            document.getElementById("protein-info").innerHTML = `<div style="color: #00ffff; text-align: center; font-size: 11px;">⏳ Running ESMFold prediction...</div>`;
+            showProgressBar("protein-info");
+            document.getElementById("protein-info").innerHTML = `<div class="progress-bar"><div class="progress-fill"></div></div><div style="color: #00ffff; text-align: center; font-size: 11px;">⏳ Running ESMFold prediction...</div>`;
 
             try {
                 const response = await fetch(`${API_URL}/research/esmfold/predict`, {
@@ -2762,6 +2865,10 @@ Respond with: Legal status (NCE/not), Pharmacological novelty (0-100%), and reco
             } catch (error) {
                 document.getElementById("protein-info").innerHTML = `<div class="error">Prediction failed: ${error.message}</div>`;
                 updateStatus(`❌ ESMFold error: ${error.message}`, "error");
+            } finally {
+                // Clear loading state
+                setLoading("btn-predict-protein", false);
+                // Note: don't hide progress bar here as it's part of protein-info content
             }
         }
 
@@ -2835,8 +2942,11 @@ Respond with: Legal status (NCE/not), Pharmacological novelty (0-100%), and reco
                 return;
             }
 
+            // Set loading state
+            setLoading("btn-molgan", true, "Generating...");
             updateStatus("🎨 Generating variants with MolGAN...", "healthy");
-            document.getElementById("tools-output-s2").innerHTML = `<div style="color: #ff8844; text-align: center;">🎨 MolGAN generating 100% valid molecules...</div>`;
+            showProgressBar("tools-output-s2");
+            document.getElementById("tools-output-s2").innerHTML = `<div class="progress-bar"><div class="progress-fill"></div></div><div style="color: #ff8844; text-align: center;">🎨 MolGAN generating 100% valid molecules...</div>`;
 
             try {
                 const response = await fetch(`${API_URL}/research/molgan/generate`, {
@@ -2890,6 +3000,10 @@ Respond with: Legal status (NCE/not), Pharmacological novelty (0-100%), and reco
             } catch (error) {
                 document.getElementById("tools-output-s2").innerHTML = `<div class="error">MolGAN error: ${error.message}</div>`;
                 updateStatus(`❌ MolGAN failed: ${error.message}`, "error");
+            } finally {
+                // Clear loading state
+                setLoading("btn-molgan", false);
+                // Note: progress bar is cleared by content replacement
             }
         }
 
