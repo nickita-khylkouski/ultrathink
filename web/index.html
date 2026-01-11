@@ -1261,6 +1261,19 @@
                 };
             }
 
+            if (error.message.includes('429')) {
+                return {
+                    title: "Rate Limit Exceeded (429)",
+                    message: "You've made too many requests. Please slow down:",
+                    suggestions: [
+                        "✓ Wait 1 minute before trying again",
+                        "✓ Reduce the number of molecules/generations",
+                        "✓ Rate limits: 10/min (discovery), 5/min (MolGAN), 3/min (ESMFold)",
+                        "✓ Cached results may be available in localStorage"
+                    ]
+                };
+            }
+
             // Generic error
             return {
                 title: "Unexpected Error",

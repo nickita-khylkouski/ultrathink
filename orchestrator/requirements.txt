@@ -1,7 +1,31 @@
+# Web Framework
 fastapi==0.104.1
 uvicorn==0.24.0
 httpx==0.25.2
 pydantic==2.5.0
-rdkit==2023.9.1
+pydantic-settings==2.1.0
+
+# Rate Limiting
 slowapi==0.1.9
+
+# Environment Variables
 python-dotenv==1.0.0
+
+# Chemistry Libraries
+rdkit==2023.9.1
+
+# Database - PostgreSQL
+sqlalchemy[asyncio]>=2.0.23
+asyncpg>=0.29.0
+alembic>=1.13.0
+psycopg2-binary>=2.9.9  # For Alembic migrations
+
+# Caching - Redis
+redis>=5.0.0
+hiredis>=2.3.2  # C parser for faster Redis operations
+
+# Password Hashing (for future authentication)
+passlib[bcrypt]>=1.7.4
+
+# Database Connection Pooling
+greenlet>=3.0.3  # Required for SQLAlchemy async

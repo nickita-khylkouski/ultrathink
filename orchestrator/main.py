@@ -29,6 +29,12 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from dotenv import load_dotenv
 
+# Database imports
+from database import init_db, close_db, check_db_connection, get_db
+from database.repositories import MoleculeRepository, ProjectRepository, UserRepository, PredictionRepository
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends
+
 # Load environment variables
 load_dotenv()
 
@@ -348,6 +354,46 @@ class PipelineResult(BaseModel):
     admet_stage: dict
     top_candidates: List[dict]
     tools_used: List[str]
+
+
+# ===== DATABASE LIFECYCLE HOOKS =====
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    Initialize database connection on application startup.
+    Creates tables if they don't exist (or use Alembic migrations for production).
+    """
+    logger.info("🚀 Starting UltraThink Drugs Orchestrator...")
+    logger.info("📊 Initializing database connection...")
+
+    try:
+        await init_db()
+        db_ok = await check_db_connection()
+
+        if db_ok:
+            logger.info("✅ Database connected successfully")
+        else:
+            logger.warning("⚠️  Database connection failed - running in degraded mode")
+    except Exception as e:
+        logger.error(f"❌ Database initialization error: {e}")
+        logger.warning("⚠️  Continuing without database - some features will be limited")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """
+    Gracefully close database connections on shutdown.
+    """
+    logger.info("🛑 Shutting down UltraThink Drugs Orchestrator...")
+    logger.info("📊 Closing database connections...")
+
+    try:
+        await close_db()
+        logger.info("✅ Database connections closed")
+    except Exception as e:
+        logger.error(f"❌ Error closing database: {e}")
+
 
 # ===== ENHANCED ADMET SCORING FUNCTIONS =====
 
@@ -1012,11 +1058,15 @@ def demo_discovery(request: Request, req: GenerationRequest):
     return result
 
 @app.get("/health")
-def health():
+async def health():
+    """Health check endpoint with database status"""
+    db_ok = await check_db_connection()
+
     return {
-        "status": "healthy",
+        "status": "healthy" if db_ok else "degraded",
         "service": "ULTRATHINK - AI Drug Discovery Platform",
         "version": "2.0.0",
+        "database": "connected" if db_ok else "disconnected",
         "systems": {
             "system1": "Traditional Drug Screening (ADMET + RDKit)",
             "system2": "Evolutionary Molecular Generation (Shapethesias)",

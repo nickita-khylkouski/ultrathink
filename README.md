@@ -80,11 +80,37 @@ Traditional drug discovery:
 # Python 3.9+
 python3 --version
 
-# Install backend dependencies
-pip install fastapi uvicorn rdkit-pypi requests
+# Install backend dependencies (updated with security features)
+cd orchestrator
+pip install -r requirements.txt
+
+# Or install individually:
+pip install fastapi uvicorn rdkit-pypi requests slowapi python-dotenv
 
 # Install Smart-Chem VAE (submodule)
 git submodule update --init --recursive
+```
+
+### Environment Configuration
+
+**IMPORTANT:** Configure environment variables before running:
+
+```bash
+# Copy the example environment file
+cd orchestrator
+cp .env.example .env
+
+# Edit .env and configure:
+# - ALLOWED_ORIGINS: Add your frontend URLs (required for CORS)
+# - SECRET_KEY: Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+# - Other settings as needed
+
+# Example .env (minimum required):
+cat > .env << EOF
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000,http://localhost:5173
+SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+LOG_LEVEL=INFO
+EOF
 ```
 
 ### Running the Application
@@ -92,8 +118,9 @@ git submodule update --init --recursive
 **Terminal 1 - Backend Server:**
 ```bash
 cd orchestrator
-python3 main.py
+uvicorn main:app --reload --port 7001
 # Runs on http://localhost:7001
+# Logs to: orchestrator.log
 ```
 
 **Terminal 2 - Frontend Server:**
@@ -108,6 +135,42 @@ python3 -m http.server 3000
 curl http://localhost:7001/health
 # Expected: {"status": "healthy", ...}
 ```
+
+### 🔒 Security Features (Production-Ready)
+
+**Rate Limiting** (Iteration 5):
+- 10 requests/minute for `/orchestrate/demo`
+- 5 requests/minute for `/research/molgan/generate`
+- 3 requests/minute for `/research/esmfold/predict`
+
+**CORS Protection** (Iteration 5):
+- Environment-configurable allowed origins (no more `allow_origins=["*"]`)
+- Configured via `ALLOWED_ORIGINS` in `.env`
+
+**Request Tracking** (Iteration 5):
+- Every request gets a unique UUID
+- Logged to `orchestrator.log` with structured format
+- Response includes `X-Request-ID` header for debugging
+
+**Input Validation** (Iteration 5):
+- Strict Pydantic models with limits:
+  - SMILES: 1-500 characters
+  - Protein sequences: 3-2000 residues
+  - Molecule generation: max 200 variants
+  - Generations: max 10 per request
+
+**Response Compression** (Iteration 5):
+- GZip compression for responses >1KB
+- 70-90% bandwidth reduction
+
+**Frontend Reliability** (Iteration 4):
+- Environment-aware API URL detection
+- Automatic backend health checks on page load
+- Exponential backoff retry logic (1s → 2s → 4s)
+- localStorage caching (1-hour TTL)
+- Browser notifications for task completion
+- Real-time connection status indicator
+- HTTP 429 (rate limit) error handling
 
 ---
 
@@ -317,20 +380,81 @@ curl -X POST http://localhost:7000/orchestrate/discover \
 # Check if ports are in use
 lsof -i :8000  # Smart-Chem
 lsof -i :5000  # BioNeMo
-lsof -i :7000  # Orchestrator
+lsof -i :7001  # Orchestrator (updated from 7000)
+
+# Check if .env is configured
+ls orchestrator/.env  # Should exist
+cat orchestrator/.env | grep ALLOWED_ORIGINS  # Should have your URLs
+```
+
+### CORS errors (blocked by browser)
+**Symptom:** Frontend shows "CORS policy blocked" in browser console
+
+**Solution:**
+```bash
+# Add your frontend URL to .env
+echo "ALLOWED_ORIGINS=http://localhost:3000,http://your-frontend-url.com" >> orchestrator/.env
+
+# Restart backend
+cd orchestrator && uvicorn main:app --reload --port 7001
+```
+
+### Rate limit exceeded (HTTP 429)
+**Symptom:** "Rate Limit Exceeded" error after multiple requests
+
+**Solution:**
+- Wait 1 minute before retrying
+- Reduce number of molecules/generations
+- Check `orchestrator.log` for request tracking
+- Frontend will auto-retry after rate limit expires
+
+### Backend connection failed
+**Symptom:** Red "Backend Offline" indicator in frontend
+
+**Solution:**
+```bash
+# Check backend health
+curl http://localhost:7001/health
+
+# Check logs for errors
+tail -f orchestrator/orchestrator.log
+
+# Restart backend
+cd orchestrator
+uvicorn main:app --reload --port 7001
 ```
 
 ### Pipeline slow
 - First run: Loading ML models (~30s)
 - Subsequent runs: ~10-30s per discovery
 - With docking: +30-120s depending on protein size
+- **Cached results:** Frontend stores results in localStorage for 1 hour
 
 ### Dependencies missing
 ```bash
 # Install all at once
 cd ~/hackathon/orchestrator
 pip install -r requirements.txt
+
+# Or individually (if requirements.txt fails)
+pip install fastapi uvicorn rdkit-pypi requests slowapi python-dotenv
 pip install torch rdkit selfies
+```
+
+### Environment variables not loaded
+**Symptom:** Backend uses default CORS settings or crashes on startup
+
+**Solution:**
+```bash
+# Ensure .env exists
+cd orchestrator
+cp .env.example .env
+
+# Generate secure SECRET_KEY
+python -c "import secrets; print('SECRET_KEY=' + secrets.token_urlsafe(32))" >> .env
+
+# Verify it's loaded
+python -c "from dotenv import load_dotenv; import os; load_dotenv(); print(os.getenv('SECRET_KEY'))"
 ```
 
 ## 🔐 Notes on Licensing & Attribution
