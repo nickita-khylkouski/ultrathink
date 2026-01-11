@@ -4,8 +4,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMolGANStore } from '@/store/useMolGANStore';
+import { useDiscoveryStore } from '@/store/useDiscoveryStore';
 import { Button, Input, TextArea } from '@/components/shared';
 import { validateSMILES } from '@/utils/validators';
+import { ArrowRight } from 'lucide-react';
 
 const schema = z.object({
   parentSmiles: z.string()
@@ -14,8 +16,8 @@ const schema = z.object({
       message: 'Invalid SMILES string. Check for balanced parentheses.'
     }),
   numVariants: z.number()
-    .min(1, 'Minimum 1 variant')
-    .max(100, 'Maximum 100 variants'),
+    .min(5, 'Minimum 5 variants')
+    .max(50, 'Maximum 50 variants'),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -29,6 +31,7 @@ const commonDrugs: Record<string, string> = {
 
 export function MolGANForm() {
   const { evolveMolecules, isLoading, generation } = useMolGANStore();
+  const { selectedCandidate } = useDiscoveryStore();
 
   const {
     register,
@@ -39,7 +42,7 @@ export function MolGANForm() {
     resolver: zodResolver(schema),
     defaultValues: {
       parentSmiles: 'CC(=O)Oc1ccccc1C(=O)O',
-      numVariants: 50,
+      numVariants: 15,
     },
   });
 
@@ -63,6 +66,12 @@ export function MolGANForm() {
     }
   };
 
+  const useSelectedMolecule = () => {
+    if (selectedCandidate) {
+      setValue('parentSmiles', selectedCandidate.smiles);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="bg-yellow-900/20 border-l-4 border-warning p-3 text-xs">
@@ -78,12 +87,34 @@ export function MolGANForm() {
         Start with a known drug, mutate it repeatedly. Eventually you get a completely different molecule.
       </div>
 
+      {selectedCandidate && (
+        <div className="bg-green-900/20 border-l-4 border-green-600 p-3">
+          <p className="text-xs font-bold mb-2 text-green-700">
+            💡 Molecule from ADMET available!
+          </p>
+          <p className="text-xs text-gray-700 mb-2 font-mono break-all">
+            {selectedCandidate.smiles.substring(0, 40)}...
+          </p>
+          <Button
+            size="sm"
+            variant="success"
+            onClick={useSelectedMolecule}
+            className="w-full flex items-center justify-center gap-2"
+            type="button"
+          >
+            <ArrowRight className="h-3 w-3" />
+            Use This Molecule
+          </Button>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <TextArea
           label="Parent SMILES"
           placeholder="CC(=O)Oc1ccccc1C(=O)O"
           rows={3}
           error={errors.parentSmiles?.message}
+          helperText="The starting molecule to evolve from"
           className="font-mono text-xs"
           {...register('parentSmiles')}
         />
@@ -92,12 +123,12 @@ export function MolGANForm() {
           type="number"
           label="Number of Variants"
           error={errors.numVariants?.message}
-          helperText="Molecules to generate per generation"
+          helperText="5-50 molecules per generation (15 recommended)"
           {...register('numVariants', { valueAsNumber: true })}
         />
 
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-500">Current Generation:</span>
+        <div className="flex items-center justify-between text-xs bg-panel p-2 border border-black">
+          <span className="text-gray-600">Current Generation:</span>
           <span className="font-bold text-warning">GEN {generation}</span>
         </div>
 
@@ -113,7 +144,7 @@ export function MolGANForm() {
 
       <div className="border-t border-primary pt-4">
         <p className="text-xs text-accent mb-2">
-          💊 COMMON STARTING DRUGS:
+          💊 QUICK START DRUGS:
         </p>
         <div className="grid grid-cols-2 gap-2">
           {Object.keys(commonDrugs).map((drug) => (
@@ -122,11 +153,26 @@ export function MolGANForm() {
               variant="secondary"
               size="sm"
               onClick={() => loadCommonDrug(drug)}
+              type="button"
             >
               💊 {drug}
             </Button>
           ))}
         </div>
+      </div>
+
+      <div className="bg-blue-900/20 border border-blue-800 p-3 text-xs">
+        <strong className="text-blue-700">💡 TIP:</strong>
+        <br />
+        <span className="text-gray-700">
+          1. Run ADMET screening first to find good molecules
+          <br />
+          2. Use the green button above to import them here
+          <br />
+          3. Click EVOLVE to generate variants
+          <br />
+          4. Each generation creates better molecules!
+        </span>
       </div>
     </div>
   );
