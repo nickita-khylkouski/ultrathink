@@ -134,3 +134,11 @@ generated_molecules/
 output/
 test_results/
 benchmark_results/
+
+# ===== LARGE TOOLS (too big for GitHub) =====
+tools/
+
+# ===== CLONED REFERENCE REPOS =====
+reference-3dmol-examples/
+3dmol-viewer/
+ngl-viewer/

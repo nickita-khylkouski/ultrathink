@@ -53,14 +53,36 @@ export function ProteinViewer({
 
       try {
         // Add PDB model
-        viewerInstance.current.addModel(pdbData, 'pdb');
+        const model = viewerInstance.current.addModel(pdbData, 'pdb');
 
-        // Set cartoon style for protein
-        viewerInstance.current.setStyle({}, {
-          cartoon: {
-            color: 'spectrum',
-          },
-        });
+        // Check if we have atoms to render
+        const atoms = model.selectedAtoms({});
+        if (atoms.length === 0) {
+          setError('No atoms found in the protein structure data');
+          setIsLoading(false);
+          return;
+        }
+
+        // Try cartoon style first (for proper protein structures)
+        // Fall back to stick style for simpler/placeholder structures
+        const hasBackbone = atoms.some((a: { atom?: string }) =>
+          a.atom === 'CA' || a.atom === 'N' || a.atom === 'C'
+        );
+
+        if (hasBackbone && atoms.length > 20) {
+          // Use cartoon for larger structures with backbone
+          viewerInstance.current.setStyle({}, {
+            cartoon: {
+              color: 'spectrum',
+            },
+          });
+        } else {
+          // Use stick + sphere for smaller/placeholder structures
+          viewerInstance.current.setStyle({}, {
+            stick: { radius: 0.2, colorscheme: 'Jmol' },
+            sphere: { scale: 0.25, colorscheme: 'Jmol' },
+          });
+        }
 
         // Zoom to fit
         viewerInstance.current.zoomTo();

@@ -40,10 +40,14 @@ export const useMolGANStore = create<MolGANState>((set) => ({
 
     try {
       const data = await api.evolveMolecules(params);
+      // Backend returns top_5_candidates, map to variants
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rawData = data as any;
+      const variants = rawData.top_5_candidates || data.variants || [];
       set({
-        variants: data.variants || [],
+        variants: variants,
         isLoading: false,
-        generation: data.generation,
+        generation: rawData.generation || data.generation,
       });
     } catch (error) {
       // Error is already an ApiError from handleApiError in api.ts

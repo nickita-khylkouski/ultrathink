@@ -103,9 +103,19 @@ export const api = {
   async predictProteinStructure(params: ESMFoldParams): Promise<ESMFoldResponse> {
     try {
       const response = await fetchWithRetry(() =>
-        apiClient.post<ESMFoldResponse>('/research/esmfold/predict', params)
+        apiClient.post('/research/esmfold/predict', params)
       );
-      return response.data;
+      // Map backend response to frontend expected format
+      // Backend returns 'pdb', frontend expects 'pdb_structure'
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rawData = response.data as any;
+      return {
+        protein_name: rawData.protein_name || params.protein_name,
+        sequence: rawData.sequence || params.sequence,
+        pdb_structure: rawData.pdb || rawData.pdb_structure || '',
+        prediction_confidence: rawData.accuracy || rawData.prediction_confidence || 0,
+        processing_time: rawData.time_estimate || rawData.processing_time || 0,
+      };
     } catch (error) {
       throw handleApiError(error);
     }

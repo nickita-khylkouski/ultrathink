@@ -257,7 +257,9 @@ curl http://localhost:7001/health
 
 ## 🔬 Research Integrations
 
-### 1. **ESMFold** (Meta AI, 2022)
+### Core Tools (Integrated)
+
+#### 1. **ESMFold** (Meta AI, 2022)
 - **Paper**: "Language models of protein sequences at the edge of structure prediction"
 - **Performance**: 60X faster than AlphaFold2, ~95% accuracy
 - **Implementation**: `/orchestrator/esmfold_integration.py`
@@ -266,7 +268,7 @@ curl http://localhost:7001/health
   - Fallback to ESMFold prediction for custom sequences
   - Supports common proteins: ACE2, SPIKE, INSULIN, HEMOGLOBIN, LYSOZYME
 
-### 2. **MolGAN** (DeepMind, 2018)
+#### 2. **MolGAN** (DeepMind, 2018)
 - **Paper**: "MolGAN: An implicit generative model for small molecular graphs"
 - **Performance**: 100% valid molecules, 10X more chemically sensible than random
 - **Implementation**: `/orchestrator/molgan_integration.py`
@@ -275,7 +277,7 @@ curl http://localhost:7001/health
   - Property-constrained generation (MW, LogP, TPSA targets)
   - Full ADMET scoring for all generated candidates
 
-### 3. **RDKit** (Open-Source Cheminformatics)
+#### 3. **RDKit** (Open-Source Cheminformatics)
 - **Purpose**: Molecular property calculation and manipulation
 - **Capabilities**:
   - ADMET properties: MW, LogP, TPSA, HBD, HBA
@@ -283,6 +285,118 @@ curl http://localhost:7001/health
   - BBB permeability prediction
   - Synthetic accessibility scoring
   - SMILES parsing and validation
+
+### Advanced Tools (Iteration 1 - Cloned and Documented)
+
+#### 4. **QSARtuna** - Automated QSAR Modeling 🆕
+- **Repository**: [MolecularAI/QSARtuna](https://github.com/MolecularAI/QSARtuna)
+- **Purpose**: Hyperparameter-optimized QSAR model building using Optuna
+- **Capabilities**:
+  - Automated ML algorithm selection (RF, XGBoost, Ridge, etc.)
+  - Multiple molecular descriptors (ECFP, MACCS, Morgan)
+  - Built-in cross-validation and uncertainty quantification
+  - Model explainability by design
+- **Why It Improves ULTRATHINK**:
+  - Automated property prediction without manual model tuning
+  - Faster screening of molecular libraries
+  - Data-driven lead optimization
+  - Reproducible results with proper validation
+
+#### 5. **Uni-Mol** - Universal 3D Molecular Representation 🆕
+- **Repository**: [deepmodeling/Uni-Mol](https://github.com/deepmodeling/Uni-Mol)
+- **Papers**: ICLR 2023, Nature Comm 2024, NeurIPS 2024
+- **Capabilities**:
+  - **Uni-Mol**: 3D molecular pretraining (209M conformations)
+  - **Uni-Mol+**: Quantum chemical property prediction (SOTA on OGB-LSC/OC20)
+  - **Uni-Mol Docking**: AlphaFold3-comparable docking (77% <2Å RMSD)
+  - **Uni-Mol2**: 1.1B parameter model (largest molecular pretraining model)
+- **Performance**:
+  - 6.09% improvement over SOTA on 21/22 TDC tasks
+  - 100-1000x faster than DFT for quantum properties
+- **Why It Improves ULTRATHINK**:
+  - 3D-aware property predictions (more accurate than 2D)
+  - Quantum-level accuracy without expensive computations
+  - Industry-leading docking performance
+  - Automatic ML for molecular tasks
+
+#### 6. **ProLIF** - Protein-Ligand Interaction Fingerprints 🆕
+- **Repository**: [chemosim-lab/ProLIF](https://github.com/chemosim-lab/ProLIF)
+- **Paper**: Journal of Cheminformatics, 2021
+- **Capabilities**:
+  - Protein-ligand interaction fingerprinting
+  - Analyzes H-bonds, π-π stacking, hydrophobic contacts, salt bridges
+  - Supports MD trajectories, docking results, experimental structures
+  - Works with protein, DNA, RNA complexes
+- **Why It Improves ULTRATHINK**:
+  - Understand HOW molecules bind (not just IF they bind)
+  - Validate docking results with interaction analysis
+  - Guide lead optimization by identifying key interactions
+  - Analyze binding stability across simulations
+
+#### 7. **ADMET-AI** - State-of-the-Art ADMET Prediction 🆕 (Iteration 2)
+- **Repository**: [swansonk14/admet_ai](https://github.com/swansonk14/admet_ai)
+- **Capabilities**:
+  - Predicts 41 ADMET properties (vs 8 for RDKit)
+  - #1 on TDC ADMET Leaderboard
+  - Processes 320,000 molecules/hour
+  - Uncertainty quantification
+- **Why It Improves ULTRATHINK**:
+  - Comprehensive ADMET coverage (pharmacokinetics, toxicity, drug-likeness)
+  - Clinical cardiotoxicity prediction
+  - 45% faster than alternatives
+  - Real-time high-throughput screening
+
+#### 8. **DeepPurpose** - Drug-Target Interaction Prediction 🆕 (Iteration 2)
+- **Repository**: [kexinhuang12345/DeepPurpose](https://github.com/kexinhuang12345/DeepPurpose)
+- **Notable**: Discovered Halicin antibiotic (Cell 2020)
+- **Capabilities**:
+  - 15+ encodings for drugs, proteins
+  - 50+ combined model architectures
+  - Drug repurposing & virtual screening
+  - One-line API for non-experts
+- **Why It Improves ULTRATHINK**:
+  - Enables drug repurposing (faster to clinic)
+  - Multi-target screening
+  - Off-target effect prediction
+  - Proven track record in antibiotic discovery
+
+#### 9. **Chemprop** - Message Passing Neural Networks 🆕 (Iteration 2)
+- **Repository**: [chemprop/chemprop](https://github.com/chemprop/chemprop)
+- **Notable**: Discovered MRSA-selective antibiotic (Nature 2023)
+- **Capabilities**:
+  - Directed message passing on molecular graphs
+  - Uncertainty quantification
+  - Atom-level feature importance
+  - Ensemble models
+- **Why It Improves ULTRATHINK**:
+  - Graph-aware predictions (better than fingerprints)
+  - Interpretable (shows which atoms matter)
+  - Uncertainty estimates for confident decisions
+  - Real antibiotic discoveries
+
+#### 10. **TorchDrug** - Graph Neural Network Platform 🆕 (Iteration 2)
+- **Repository**: [DeepGraphLearning/torchdrug](https://github.com/DeepGraphLearning/torchdrug)
+- **Capabilities**:
+  - 10+ GNN architectures (GCN, GAT, GIN)
+  - Generative models (VAE, GAN, flows)
+  - Reinforcement learning for molecular design
+  - Knowledge graph reasoning
+- **Why It Improves ULTRATHINK**:
+  - Comprehensive ML platform for drug discovery
+  - RL-based de novo design
+  - Biomedical knowledge graph integration
+  - Research-grade flexibility
+
+**See [TOOLS_INTEGRATION.md](TOOLS_INTEGRATION.md) for detailed documentation of all 10 tools.**
+
+### Tool Summary (10 Total)
+
+| Category | Tools | Count |
+|----------|-------|-------|
+| **Core (Integrated)** | RDKit, ESMFold, MolGAN | 3 |
+| **Iteration 1 (Cloned)** | QSARtuna, Uni-Mol, ProLIF | 3 |
+| **Iteration 2 (Cloned)** | ADMET-AI, DeepPurpose, Chemprop, TorchDrug | 4 |
+| **Total** | | **10** |
 
 ---
 

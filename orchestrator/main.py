@@ -1206,6 +1206,23 @@ async def health(request: Request):
         "timestamp": datetime.now().isoformat()
     }
 
+
+@app.get("/convert/smiles-to-sdf")
+@limiter.limit("30/minute")  # Lightweight: RDKit conversion
+def convert_smiles_to_sdf(request: Request, smiles: str):
+    """
+    Convert SMILES string to SDF format with 3D coordinates.
+    Used by 3Dmol.js for molecule visualization.
+    """
+    try:
+        sdf = generate_3d_coordinates(smiles)
+        if sdf:
+            return {"sdf": sdf, "smiles": smiles}
+        else:
+            return {"error": "Failed to generate 3D coordinates", "smiles": smiles}
+    except Exception as e:
+        return {"error": str(e), "smiles": smiles}
+
 # ===== NEW ENDPOINTS FOR GITHUB TOOLS =====
 
 @app.get("/tools")

@@ -20,9 +20,9 @@ export function Button({
   const baseStyles = 'font-bold rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variantStyles = {
-    primary: 'bg-primary text-black hover:bg-secondary border border-primary',
-    secondary: 'bg-accent text-black hover:bg-blue-400 border border-accent',
-    danger: 'bg-danger text-white hover:bg-red-600 border border-danger',
+    primary: 'bg-black text-white hover:bg-gray-800 border border-black',
+    secondary: 'bg-white text-black hover:bg-gray-100 border-2 border-black',
+    danger: 'bg-red-600 text-white hover:bg-red-700 border border-red-600',
     success: 'bg-green-600 text-white hover:bg-green-700 border border-green-600',
   };
 
