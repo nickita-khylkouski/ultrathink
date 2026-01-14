@@ -75,7 +75,31 @@ Traditional drug discovery:
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### 🐳 Option 1: Docker (Recommended)
+
+**The fastest way to get started:**
+
+```bash
+# 1. Setup environment
+cp orchestrator/.env.example orchestrator/.env
+python -c "import secrets; print('SECRET_KEY=' + secrets.token_urlsafe(32))" >> orchestrator/.env
+
+# 2. Start all services with Docker Compose
+docker-compose up -d
+
+# 3. Access the application
+# Frontend:     http://localhost:3000
+# Backend API:  http://localhost:7001
+# API Docs:     http://localhost:7001/docs
+```
+
+📖 **See [DOCKER.md](DOCKER.md) for complete Docker documentation**
+
+### ⚙️ Option 2: Manual Setup
+
+**For local development:**
+
+#### Prerequisites
 ```bash
 # Python 3.9+
 python3 --version

@@ -1,0 +1,140 @@
+# ULTRATHINK .dockerignore
+# Files and directories to exclude from Docker build context
+
+# ===== GIT =====
+.git
+.gitignore
+.gitmodules
+
+# ===== ENVIRONMENT & SECRETS =====
+.env
+.env.*
+*.env
+!.env.example
+
+# ===== LOGS =====
+*.log
+logs/
+orchestrator.log
+
+# ===== PYTHON =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+env/
+ENV/
+.venv/
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+.ipynb_checkpoints
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+
+# ===== NODE.JS =====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.eslintcache
+.node_repl_history
+*.tgz
+.yarn-integrity
+.cache
+.parcel-cache
+.next/
+out/
+.nuxt
+dist/
+.serverless/
+
+# ===== DATABASES =====
+*.db
+*.sqlite
+*.sqlite3
+dump/
+*.sql
+
+# ===== IDE & EDITORS =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ===== MACHINE LEARNING =====
+*.pt
+*.pth
+*.ckpt
+*.h5
+models/checkpoints/
+wandb/
+mlruns/
+runs/
+tensorboard/
+
+# ===== TEMPORARY FILES =====
+*.tmp
+*.temp
+*.bak
+*.cache
+
+# ===== DOCUMENTATION (exclude from builds) =====
+*.md
+!README.md
+DEMO*.md
+RALPH_*.md
+*_SUMMARY.md
+*_GUIDE.md
+CHEATSHEET.md
+QUICKSTART.txt
+START_HERE.txt
+
+# ===== PROJECT SPECIFIC =====
+*.pdb.gz
+uploads/
+user_data/
+generated_molecules/
+output/
+test_results/
+benchmark_results/
+screenshots/
+reference-*/
+
+# ===== DEMO & TESTING FILES =====
+DEMO.py
+test_pipeline.py
+*.sh
