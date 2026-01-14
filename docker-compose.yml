@@ -1,0 +1,191 @@
+services:
+  # PostgreSQL Database - Primary data store
+  postgres:
+    image: postgres:15-alpine
+    container_name: ultrathink_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ultrathink}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password_change_in_prod}
+      POSTGRES_DB: ${POSTGRES_DB:-ultrathink_dev}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-ultrathink} -d $${POSTGRES_DB:-ultrathink_dev}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ultrathink_network
+    restart: unless-stopped
+
+  # Redis - Caching and session storage
+  redis:
+    image: redis:7-alpine
+    container_name: ultrathink_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ultrathink_network
+    restart: unless-stopped
+
+  # Backend Orchestrator - FastAPI application
+  backend:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    container_name: ultrathink_backend
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-ultrathink}:${POSTGRES_PASSWORD:-dev_password_change_in_prod}@postgres:5432/${POSTGRES_DB:-ultrathink_dev}
+      - REDIS_URL=redis://redis:6379
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8080}
+      - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    ports:
+      - "7001:7001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ultrathink_network
+    restart: unless-stopped
+    volumes:
+      # Mount .env file if it exists
+      - ./orchestrator/.env:/app/.env:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7001/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+  # Frontend - Next.js application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ultrathink_frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:7001
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - ultrathink_network
+    restart: unless-stopped
+
+  # Web Demo Server - Simple Python HTTP server
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: ultrathink_web
+    ports:
+      - "8080:3000"
+    networks:
+      - ultrathink_network
+    restart: unless-stopped
+
+  # pgAdmin - Database management UI (optional, comment out for production)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ultrathink_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@ultrathink.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin_change_this}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - ultrathink_network
+    restart: unless-stopped
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  ultrathink_network:
+    driver: bridge
+
+# =============================================================================
+# USAGE INSTRUCTIONS
+# =============================================================================
+#
+# 1. SETUP (First time only):
+#    - Copy .env.docker.example to .env (for docker-compose)
+#    - Copy orchestrator/.env.example to orchestrator/.env (for backend)
+#    - Generate secrets:
+#      SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+#      DB_PASSWORD=$(python -c "import secrets; print(secrets.token_urlsafe(16))")
+#    - Update .env with POSTGRES_PASSWORD, SECRET_KEY, and ALLOWED_ORIGINS
+#    - Update orchestrator/.env with SECRET_KEY
+#
+# 2. START ALL SERVICES:
+#    docker compose up -d
+#
+# 3. VIEW LOGS:
+#    docker compose logs -f                    # All services
+#    docker compose logs -f backend            # Backend only
+#    docker compose logs -f frontend           # Frontend only
+#
+# 4. CHECK STATUS:
+#    docker compose ps
+#
+# 5. STOP SERVICES:
+#    docker compose down                       # Stop and remove containers
+#    docker compose down -v                    # Stop and remove volumes (WARNING: Deletes data!)
+#
+# 6. REBUILD AFTER CODE CHANGES:
+#    docker compose up -d --build
+#    docker compose up -d --build backend      # Rebuild backend only
+#
+# 7. RUN DATABASE MIGRATIONS:
+#    docker compose exec backend alembic upgrade head
+#
+# 8. ACCESS SERVICES:
+#    - Frontend:        http://localhost:3000
+#    - Backend API:     http://localhost:7001
+#    - Backend Docs:    http://localhost:7001/docs
+#    - Web Demo:        http://localhost:8080
+#    - pgAdmin:         http://localhost:5050
+#    - PostgreSQL:      localhost:5432 (use credentials from environment)
+#    - Redis:           localhost:6379
+#
+# 9. PRODUCTION DEPLOYMENT:
+#    - Update all passwords in environment variables
+#    - Remove or secure pgAdmin service
+#    - Use proper SECRET_KEY (not the default)
+#    - Configure proper ALLOWED_ORIGINS
+#    - Consider using Docker secrets for sensitive data
+#    - Use a reverse proxy (nginx) for SSL termination
+#
+# =============================================================================
