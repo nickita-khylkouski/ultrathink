@@ -13,7 +13,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ultrathink -d ultrathink_dev"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-ultrathink} -d $${POSTGRES_DB:-ultrathink_dev}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -110,8 +110,8 @@ services:
     image: dpage/pgadmin4:latest
     container_name: ultrathink_pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@ultrathink.local
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@ultrathink.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin_change_this}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
     ports:
