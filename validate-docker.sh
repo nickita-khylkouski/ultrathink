@@ -44,6 +44,7 @@ files=(
     "frontend/Dockerfile"
     "web/Dockerfile"
     ".dockerignore"
+    ".env.docker.example"
     "orchestrator/.env.example"
 )
 
@@ -58,12 +59,20 @@ echo ""
 
 # Check .env setup
 echo "✓ Checking environment configuration..."
+if [ ! -f ".env" ]; then
+    echo "⚠️  WARNING: .env not found in root directory"
+    echo "   Run: cp .env.docker.example .env"
+    echo "   Then configure POSTGRES_PASSWORD and SECRET_KEY"
+else
+    echo "  ✓ .env exists (for docker-compose)"
+fi
+
 if [ ! -f "orchestrator/.env" ]; then
     echo "⚠️  WARNING: orchestrator/.env not found"
     echo "   Run: cp orchestrator/.env.example orchestrator/.env"
     echo "   Then configure SECRET_KEY and ALLOWED_ORIGINS"
 else
-    echo "  ✓ orchestrator/.env exists"
+    echo "  ✓ orchestrator/.env exists (for backend)"
 fi
 echo ""
 
@@ -72,9 +81,11 @@ echo "======================================"
 echo "✅ Docker setup validation complete!"
 echo ""
 echo "Next steps:"
-echo "1. Configure orchestrator/.env (if not done)"
-echo "2. Run: docker compose up -d"
-echo "3. Access: http://localhost:3000 (frontend)"
-echo "4. Access: http://localhost:7001 (backend)"
+echo "1. Configure .env: cp .env.docker.example .env"
+echo "2. Configure orchestrator/.env: cp orchestrator/.env.example orchestrator/.env"
+echo "3. Generate secrets and update both .env files"
+echo "4. Run: docker compose up -d"
+echo "5. Access: http://localhost:3000 (frontend)"
+echo "6. Access: http://localhost:7001 (backend)"
 echo ""
 echo "See DOCKER.md for complete documentation."

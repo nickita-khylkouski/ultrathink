@@ -18,13 +18,21 @@ This guide explains how to run ULTRATHINK using Docker and Docker Compose.
 git clone https://github.com/nickita-khylkouski/ultrathink.git
 cd ultrathink
 
-# Copy environment file and configure
+# Copy environment files and configure
+cp .env.docker.example .env
 cp orchestrator/.env.example orchestrator/.env
 
-# Generate a secure SECRET_KEY
-python -c "import secrets; print('SECRET_KEY=' + secrets.token_urlsafe(32))" >> orchestrator/.env
+# Generate a secure SECRET_KEY for both files
+SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+echo "SECRET_KEY=$SECRET_KEY" >> .env
+echo "SECRET_KEY=$SECRET_KEY" >> orchestrator/.env
 
-# Edit orchestrator/.env to configure ALLOWED_ORIGINS and other settings
+# Generate a secure database password
+DB_PASSWORD=$(python -c "import secrets; print(secrets.token_urlsafe(16))")
+echo "POSTGRES_PASSWORD=$DB_PASSWORD" >> .env
+
+# Edit .env and orchestrator/.env to configure other settings as needed
+# Important: Update ALLOWED_ORIGINS, POSTGRES_PASSWORD in production
 ```
 
 ### 2. Start All Services
