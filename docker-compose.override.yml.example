@@ -1,0 +1,41 @@
+# Docker Compose Override Example
+# ================================
+# 
+# This file demonstrates how to override port bindings for local development.
+# By default, application services (frontend, backend) are exposed to the host,
+# while infrastructure services (postgres, redis, pgadmin, web) use 'expose' 
+# to avoid port conflicts during deployment.
+# 
+# To enable local access to infrastructure services:
+# 1. Copy this file to docker-compose.override.yml
+# 2. Uncomment the services you need to access from your host machine
+# 3. Run: docker compose up -d
+#
+# Docker Compose automatically merges docker-compose.yml with 
+# docker-compose.override.yml if it exists.
+#
+# WARNING: Do NOT commit docker-compose.override.yml to version control!
+# Add it to .gitignore to keep it local to your development environment.
+
+version: '3.8'
+
+services:
+  # Uncomment to access PostgreSQL from host
+  # postgres:
+  #   ports:
+  #     - "5432:5432"
+
+  # Uncomment to access Redis from host
+  # redis:
+  #   ports:
+  #     - "6379:6379"
+
+  # Uncomment to access Web Demo from host
+  # web:
+  #   ports:
+  #     - "8080:3000"
+
+  # Uncomment to access pgAdmin from host
+  # pgadmin:
+  #   ports:
+  #     - "5050:80"

@@ -53,10 +53,19 @@ docker-compose ps
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:7001
 - **API Documentation**: http://localhost:7001/docs
-- **Web Demo**: http://localhost:8080
-- **pgAdmin**: http://localhost:5050
-- **PostgreSQL**: localhost:5432
-- **Redis**: localhost:6379
+
+**Note**: By default, the frontend and backend are exposed to the host for external access. Internal services (postgres, redis, web, pgadmin) use Docker's internal networking and are not bound to host ports to prevent port conflicts during deployment.
+
+For local development, if you need direct access to internal infrastructure services:
+1. Copy `docker-compose.override.yml.example` to `docker-compose.override.yml`
+2. Uncomment the services you need to access
+3. Restart with `docker compose up -d`
+
+The following services are available internally within the Docker network:
+- **Web Demo**: http://web:3000 (internal)
+- **pgAdmin**: http://pgadmin:80 (internal)
+- **PostgreSQL**: postgres:5432 (internal)
+- **Redis**: redis:6379 (internal)
 
 ### 4. Initial Database Setup
 
@@ -78,30 +87,36 @@ The Docker setup includes the following services:
    - FastAPI orchestrator
    - Handles drug discovery pipeline
    - Integrates with RDKit, ESMFold, MolGAN
+   - Exposed for API access
 
 2. **frontend** (Port 3000)
    - Next.js React application
    - Modern UI for drug discovery
+   - Exposed for web access
 
-3. **web** (Port 8080)
+3. **web** (Internal Port 3000)
    - Simple demo/presentation server
    - Python HTTP server
+   - Accessible via internal Docker network
 
 ### Infrastructure Services
 
-4. **postgres** (Port 5432)
+4. **postgres** (Internal Port 5432)
    - PostgreSQL 15
    - Primary data store
    - Stores projects, molecules, predictions
+   - Accessible only within Docker network
 
-5. **redis** (Port 6379)
+5. **redis** (Internal Port 6379)
    - Redis 7
    - Caching layer
    - Session storage
+   - Accessible only within Docker network
 
-6. **pgadmin** (Port 5050)
+6. **pgadmin** (Internal Port 80)
    - Database management UI
    - Optional (can be disabled in production)
+   - Accessible only within Docker network
 
 ## 🔧 Configuration
 
@@ -249,15 +264,23 @@ docker-compose exec backend pip install package-name
 
 ## 🔍 Troubleshooting
 
+### Port Conflicts
+
+The default configuration uses Docker's internal networking to avoid port conflicts. Only the frontend (port 3000) is exposed to the host. If you still encounter port conflicts:
+
+```bash
+# Check if port 3000 is in use
+lsof -i :3000
+
+# Stop the process using the port or change the frontend port mapping:
+# In docker-compose.yml, change frontend ports to:
+# ports:
+#   - "3001:3000"  # Map to a different host port
+```
+
 ### Services Won't Start
 
 ```bash
-# Check if ports are in use
-lsof -i :3000  # Frontend
-lsof -i :7001  # Backend
-lsof -i :5432  # PostgreSQL
-lsof -i :6379  # Redis
-
 # Check Docker logs
 docker-compose logs backend
 
@@ -326,7 +349,12 @@ services:
 For development, you may want to run services locally instead of in Docker:
 
 ```bash
-# Start only infrastructure services (DB, Redis)
+# Option 1: Use docker-compose.override.yml for local access
+cp docker-compose.override.yml.example docker-compose.override.yml
+# Edit docker-compose.override.yml to expose needed services
+docker-compose up -d
+
+# Option 2: Start only infrastructure services (DB, Redis)
 docker-compose up -d postgres redis
 
 # Run backend locally with hot reload
@@ -422,7 +450,7 @@ server {
 # Backend health
 curl http://localhost:7001/health
 
-# Frontend health (if implemented)
+# Frontend health
 curl http://localhost:3000/api/health
 
 # Database health
