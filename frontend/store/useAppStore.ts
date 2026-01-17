@@ -35,10 +35,11 @@ export const useAppStore = create<AppState>((set) => ({
         statusMessage: 'System Online',
       });
     } catch (error) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7001';
       set({
         isOnline: false,
         lastHealthCheck: new Date(),
-        statusMessage: 'System Offline - Check backend at localhost:7001',
+        statusMessage: `System Offline - Check backend at ${apiUrl}`,
       });
     }
   },
