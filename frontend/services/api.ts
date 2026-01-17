@@ -10,17 +10,9 @@ import type {
   ApiError,
 } from '@/types/api';
 
-const API_BASE_URL = (() => {
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    // Production: use same host
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return `${window.location.protocol}//${hostname}:7001`;
-    }
-  }
-  // Development or SSR: use localhost or env variable
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7001';
-})();
+// Always use NEXT_PUBLIC_API_URL from environment
+// This supports both local development and production reverse proxy setups
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7001';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
