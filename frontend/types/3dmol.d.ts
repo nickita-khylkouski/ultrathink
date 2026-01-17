@@ -27,6 +27,7 @@ declare namespace $3Dmol {
     fitSlab(): void;
     setViewStyle(style: any): void;
     getModel(): any;
+    selectedAtoms(selection: any): any[];
   }
 
   interface VolumeData {
