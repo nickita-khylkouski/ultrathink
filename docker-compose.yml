@@ -53,7 +53,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ultrathink}:${POSTGRES_PASSWORD:-dev_password_change_in_prod}@postgres:5432/${POSTGRES_DB:-ultrathink_dev}
       - REDIS_URL=redis://redis:6379
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3001,http://localhost:3000,http://localhost:8080}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8080,https://theseus.blipz.live}
       - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     ports:
@@ -85,8 +85,8 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:7001
       - NODE_ENV=production
-    ports:
-      - "3001:3000"
+    expose:
+      - "3000"
     depends_on:
       - backend
     networks:
@@ -172,7 +172,7 @@ networks:
 #    docker compose exec backend alembic upgrade head
 #
 # 8. ACCESS SERVICES:
-#    - Frontend:        http://localhost:3001
+#    - Frontend:        Access via reverse proxy (theseus.blipz.live:3000) or internal network only
 #    - Backend API:     http://localhost:7001
 #    - Backend Docs:    http://localhost:7001/docs
 #    - Web Demo:        Access via frontend (internal network only)
@@ -180,9 +180,10 @@ networks:
 #    - PostgreSQL:      Internal network only (not exposed to host)
 #    - Redis:           Internal network only (not exposed to host)
 #
-#    NOTE: Internal services (postgres, redis, web, pgadmin) use 'expose' 
+#    NOTE: Internal services (postgres, redis, web, pgadmin, frontend) use 'expose'
 #    instead of host port binding to avoid port conflicts during deployment.
-#    Frontend and backend are exposed as they need external access.
+#    Backend is exposed as it needs external access.
+#    Frontend should be accessed via reverse proxy (e.g., nginx).
 #    For development access to internal services, use docker-compose.override.yml
 #
 # 9. PRODUCTION DEPLOYMENT:
