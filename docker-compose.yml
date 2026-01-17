@@ -56,8 +56,8 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8080,https://theseus.blipz.live}
       - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    ports:
-      - "7001:7001"
+    expose:
+      - "7001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -172,18 +172,20 @@ networks:
 #    docker compose exec backend alembic upgrade head
 #
 # 8. ACCESS SERVICES:
-#    - Frontend:        Access via reverse proxy (theseus.blipz.live:3000) or internal network only
-#    - Backend API:     http://localhost:7001
-#    - Backend Docs:    http://localhost:7001/docs
-#    - Web Demo:        Access via frontend (internal network only)
-#    - pgAdmin:         Access via frontend (internal network only)
+#    - Frontend:        Access via reverse proxy (theseus.blipz.live:3000) - internal network only
+#    - Backend API:     Access via reverse proxy - internal network only (container port 7001)
+#    - Backend Docs:    Access via reverse proxy at /docs endpoint
+#    - Web Demo:        Internal network only
+#    - pgAdmin:         Internal network only
 #    - PostgreSQL:      Internal network only (not exposed to host)
 #    - Redis:           Internal network only (not exposed to host)
 #
-#    NOTE: Internal services (postgres, redis, web, pgadmin, frontend) use 'expose'
-#    instead of host port binding to avoid port conflicts during deployment.
-#    Backend is exposed as it needs external access.
-#    Frontend should be accessed via reverse proxy (e.g., nginx).
+#    NOTE: ALL services use 'expose' instead of 'ports' to avoid host port conflicts.
+#    All external access must go through your reverse proxy (nginx/caddy/traefik).
+#    Configure your reverse proxy to forward:
+#      - theseus.blipz.live:3000 -> ultrathink_frontend:3000
+#      - API endpoint -> ultrathink_backend:7001
+#    Update NEXT_PUBLIC_API_URL environment variable to match your backend's public URL.
 #    For development access to internal services, use docker-compose.override.yml
 #
 # 9. PRODUCTION DEPLOYMENT:
