@@ -35,9 +35,11 @@ class DatabaseConfig:
             "postgresql+asyncpg://ultrathink:dev_password_change_in_prod@localhost:5432/ultrathink_dev"
         )
 
-        # Convert postgres:// to postgresql+asyncpg:// if needed (Heroku compatibility)
+        # Convert postgres:// or postgresql:// to postgresql+asyncpg:// if needed
         if self.database_url.startswith("postgres://"):
             self.database_url = self.database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif self.database_url.startswith("postgresql://") and "+asyncpg" not in self.database_url:
+            self.database_url = self.database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
         self.pool_size = int(os.getenv("DB_POOL_SIZE", "20"))
         self.max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "10"))
