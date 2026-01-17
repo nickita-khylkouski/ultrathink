@@ -11,8 +11,8 @@ services:
       POSTGRES_DB: ultrathink_dev
       # Performance tuning for development
       POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Optional: Custom PostgreSQL config for better performance
@@ -30,8 +30,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ultrathink_redis
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     volumes:
       - redis_data:/data
     command: >
@@ -58,8 +58,8 @@ services:
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
-    ports:
-      - "5050:80"
+    expose:
+      - "80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     networks:
@@ -86,14 +86,18 @@ networks:
 # Stop services:     docker-compose down
 # Reset database:    docker-compose down -v  (WARNING: Deletes all data!)
 #
-# Connect to PostgreSQL:
-#   Host: localhost
+# Connect to PostgreSQL from within Docker network:
+#   Host: postgres
 #   Port: 5432
 #   Database: ultrathink_dev
 #   User: ultrathink
 #   Password: dev_password_change_in_prod
 #
-# Access pgAdmin:
-#   URL: http://localhost:5050
+# Access pgAdmin from within Docker network:
+#   URL: http://pgadmin
 #   Email: admin@ultrathink.local
 #   Password: admin
+#
+# NOTE: Services use 'expose' for internal Docker networking.
+# To access services from host during development, add port mappings
+# in a docker-compose.override.yml file.

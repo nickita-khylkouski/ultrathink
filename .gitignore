@@ -7,6 +7,9 @@
 orchestrator/.env
 *.env
 
+# ===== DOCKER OVERRIDE FILES =====
+docker-compose.override.yml
+
 # ===== LOGS =====
 *.log
 logs/

@@ -8,8 +8,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password_change_in_prod}
       POSTGRES_DB: ${POSTGRES_DB:-ultrathink_dev}
       POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,8 +25,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ultrathink_redis
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     volumes:
       - redis_data:/data
     command: >
@@ -56,8 +56,8 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8080}
       - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    ports:
-      - "7001:7001"
+    expose:
+      - "7001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -99,8 +99,8 @@ services:
       context: ./web
       dockerfile: Dockerfile
     container_name: ultrathink_web
-    ports:
-      - "8080:3000"
+    expose:
+      - "3000"
     networks:
       - ultrathink_network
     restart: unless-stopped
@@ -114,8 +114,8 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin_change_this}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
-    ports:
-      - "5050:80"
+    expose:
+      - "80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     networks:
@@ -173,12 +173,17 @@ networks:
 #
 # 8. ACCESS SERVICES:
 #    - Frontend:        http://localhost:3000
-#    - Backend API:     http://localhost:7001
-#    - Backend Docs:    http://localhost:7001/docs
-#    - Web Demo:        http://localhost:8080
-#    - pgAdmin:         http://localhost:5050
-#    - PostgreSQL:      localhost:5432 (use credentials from environment)
-#    - Redis:           localhost:6379
+#    - Backend API:     Access via frontend (internal network only)
+#    - Backend Docs:    Access via frontend (internal network only)
+#    - Web Demo:        Access via frontend (internal network only)
+#    - pgAdmin:         Access via frontend (internal network only)
+#    - PostgreSQL:      Internal network only (not exposed to host)
+#    - Redis:           Internal network only (not exposed to host)
+#
+#    NOTE: Services use internal Docker networking with 'expose' instead of 
+#    host port binding. Only the frontend is exposed on port 3000. For direct
+#    access to internal services during development, temporarily add 'ports'
+#    mapping in docker-compose.override.yml
 #
 # 9. PRODUCTION DEPLOYMENT:
 #    - Update all passwords in environment variables
