@@ -53,7 +53,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-ultrathink}:${POSTGRES_PASSWORD:-dev_password_change_in_prod}@postgres:5432/${POSTGRES_DB:-ultrathink_dev}
       - REDIS_URL=redis://redis:6379
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8080}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3001,http://localhost:3000,http://localhost:8080}
       - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     ports:
@@ -86,7 +86,7 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:7001
       - NODE_ENV=production
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
       - backend
     networks:
@@ -172,7 +172,7 @@ networks:
 #    docker compose exec backend alembic upgrade head
 #
 # 8. ACCESS SERVICES:
-#    - Frontend:        http://localhost:3000
+#    - Frontend:        http://localhost:3001
 #    - Backend API:     http://localhost:7001
 #    - Backend Docs:    http://localhost:7001/docs
 #    - Web Demo:        Access via frontend (internal network only)
