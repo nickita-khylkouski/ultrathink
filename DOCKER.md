@@ -51,17 +51,17 @@ docker-compose ps
 ### 3. Access the Application
 
 - **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:7001
+- **API Documentation**: http://localhost:7001/docs
 
-**Note**: By default, only the frontend is exposed to the host. Internal services (backend, database, redis) use Docker's internal networking and are not bound to host ports. This prevents port conflicts during deployment.
+**Note**: By default, the frontend and backend are exposed to the host for external access. Internal services (postgres, redis, web, pgadmin) use Docker's internal networking and are not bound to host ports. This prevents port conflicts for infrastructure services during deployment.
 
-For local development, if you need direct access to internal services:
+For local development, if you need direct access to internal infrastructure services:
 1. Copy `docker-compose.override.yml.example` to `docker-compose.override.yml`
 2. Uncomment the services you need to access
 3. Restart with `docker compose up -d`
 
 The following services are available internally within the Docker network:
-- **Backend API**: http://backend:7001 (internal)
-- **API Documentation**: http://backend:7001/docs (internal)
 - **Web Demo**: http://web:3000 (internal)
 - **pgAdmin**: http://pgadmin:80 (internal)
 - **PostgreSQL**: postgres:5432 (internal)
@@ -83,16 +83,16 @@ The Docker setup includes the following services:
 
 ### Application Services
 
-1. **backend** (Internal Port 7001)
+1. **backend** (Port 7001)
    - FastAPI orchestrator
    - Handles drug discovery pipeline
    - Integrates with RDKit, ESMFold, MolGAN
-   - Accessible via internal Docker network
+   - Exposed for API access
 
 2. **frontend** (Port 3000)
    - Next.js React application
    - Modern UI for drug discovery
-   - Only service exposed to host by default
+   - Exposed for web access
 
 3. **web** (Internal Port 3000)
    - Simple demo/presentation server
@@ -447,8 +447,8 @@ server {
 ### Health Checks
 
 ```bash
-# Backend health (from within Docker network or via frontend proxy)
-docker-compose exec backend curl http://localhost:7001/health
+# Backend health
+curl http://localhost:7001/health
 
 # Frontend health
 curl http://localhost:3000/api/health

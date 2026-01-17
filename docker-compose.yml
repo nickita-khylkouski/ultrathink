@@ -56,8 +56,8 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8080}
       - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    expose:
-      - "7001"
+    ports:
+      - "7001:7001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -173,17 +173,17 @@ networks:
 #
 # 8. ACCESS SERVICES:
 #    - Frontend:        http://localhost:3000
-#    - Backend API:     Access via frontend (internal network only)
-#    - Backend Docs:    Access via frontend (internal network only)
+#    - Backend API:     http://localhost:7001
+#    - Backend Docs:    http://localhost:7001/docs
 #    - Web Demo:        Access via frontend (internal network only)
 #    - pgAdmin:         Access via frontend (internal network only)
 #    - PostgreSQL:      Internal network only (not exposed to host)
 #    - Redis:           Internal network only (not exposed to host)
 #
-#    NOTE: Services use internal Docker networking with 'expose' instead of 
-#    host port binding. Only the frontend is exposed on port 3000. For direct
-#    access to internal services during development, temporarily add 'ports'
-#    mapping in docker-compose.override.yml
+#    NOTE: Internal services (postgres, redis, web, pgadmin) use 'expose' 
+#    instead of host port binding to avoid port conflicts during deployment.
+#    Frontend and backend are exposed as they need external access.
+#    For development access to internal services, use docker-compose.override.yml
 #
 # 9. PRODUCTION DEPLOYMENT:
 #    - Update all passwords in environment variables

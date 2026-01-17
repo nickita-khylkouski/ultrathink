@@ -2,9 +2,11 @@
 # ================================
 # 
 # This file demonstrates how to override port bindings for local development.
-# By default, services use 'expose' to avoid port conflicts during deployment.
+# By default, application services (frontend, backend) are exposed to the host,
+# while infrastructure services (postgres, redis, pgadmin, web) use 'expose' 
+# to avoid port conflicts during deployment.
 # 
-# To enable local access to services:
+# To enable local access to infrastructure services:
 # 1. Copy this file to docker-compose.override.yml
 # 2. Uncomment the services you need to access from your host machine
 # 3. Run: docker compose up -d
@@ -27,11 +29,6 @@ services:
   # redis:
   #   ports:
   #     - "6379:6379"
-
-  # Uncomment to access Backend API from host
-  # backend:
-  #   ports:
-  #     - "7001:7001"
 
   # Uncomment to access Web Demo from host
   # web:
