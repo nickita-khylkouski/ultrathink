@@ -54,7 +54,7 @@ docker-compose ps
 - **Backend API**: http://localhost:7001
 - **API Documentation**: http://localhost:7001/docs
 
-**Note**: By default, the frontend and backend are exposed to the host for external access. Internal services (postgres, redis, web, pgadmin) use Docker's internal networking and are not bound to host ports. This prevents port conflicts for infrastructure services during deployment.
+**Note**: By default, the frontend and backend are exposed to the host for external access. Internal services (postgres, redis, web, pgadmin) use Docker's internal networking and are not bound to host ports to prevent port conflicts during deployment.
 
 For local development, if you need direct access to internal infrastructure services:
 1. Copy `docker-compose.override.yml.example` to `docker-compose.override.yml`
