@@ -53,10 +53,10 @@ export function ProteinViewer({
 
       try {
         // Add PDB model
-        const model = viewerInstance.current.addModel(pdbData, 'pdb');
+        viewerInstance.current.addModel(pdbData, 'pdb');
 
         // Check if we have atoms to render
-        const atoms = model.selectedAtoms({});
+        const atoms = viewerInstance.current.selectedAtoms({});
         if (atoms.length === 0) {
           setError('No atoms found in the protein structure data');
           setIsLoading(false);
