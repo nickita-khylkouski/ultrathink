@@ -81,9 +81,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:7001}
     container_name: ultrathink_frontend
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:7001
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:7001}
       - NODE_ENV=production
     expose:
       - "3000"
